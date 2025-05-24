@@ -112,6 +112,7 @@ if (!API_KEY) {
 
 class ExaServer {
   private server: McpServer;
+  private keepAliveInterval?: NodeJS.Timeout;
 
   constructor() {
     this.server = new McpServer({
@@ -169,10 +170,33 @@ class ExaServer {
       
       await this.server.connect(transport);
       log("Exa Search MCP server running on stdio");
+      
+      // Set up keep-alive to prevent timeout
+      this.setupKeepAlive();
     } catch (error) {
       log(`Server initialization error: ${error instanceof Error ? error.message : String(error)}`);
       throw error;
     }
+  }
+
+  private setupKeepAlive(): void {
+    // Send a heartbeat every 30 seconds to prevent timeout
+    this.keepAliveInterval = setInterval(() => {
+      // MCP protocol doesn't have explicit heartbeat, but we can log to show activity
+      log("Server heartbeat - connection active");
+    }, 30000);
+
+    // Clean up on process exit
+    process.on('SIGINT', () => this.cleanup());
+    process.on('SIGTERM', () => this.cleanup());
+  }
+
+  private cleanup(): void {
+    if (this.keepAliveInterval) {
+      clearInterval(this.keepAliveInterval);
+    }
+    log("Server shutting down gracefully");
+    process.exit(0);
   }
 }
 

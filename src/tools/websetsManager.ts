@@ -2,6 +2,7 @@ import { z } from "zod";
 import { toolRegistry, ToolCategory, ServiceType } from "./config.js";
 import { createServices } from "../services/index.js";
 import { createRequestLogger } from "../utils/logger.js";
+import { withKeepAlive } from "../utils/keepAlive.js";
 
 /**
  * Unified Websets Manager Tool
@@ -267,7 +268,21 @@ async function handleCreateCollection(services: any, params: any, logger: any) {
   };
   
   logger.log(`Creating collection for: "${params.searchQuery}"`);
-  const result = await services.websetService.createWebset(request);
+  
+  // Use keep-alive for long-running operation
+  const result = await withKeepAlive(
+    'Creating webset collection',
+    async (keepAlive) => {
+      keepAlive.sendProgress('Initializing collection creation', 10);
+      const webset = await services.websetService.createWebset(request);
+      keepAlive.sendProgress('Collection created, processing will continue in background', 100);
+      return webset;
+    },
+    {
+      interval: 5000,
+      enableLogging: true
+    }
+  );
   
   return {
     content: [{
