@@ -49,3 +49,51 @@ export interface SearchArgs {
   numResults?: number;
   livecrawl?: 'always' | 'fallback';
 }
+
+// Re-export Websets API types for convenience
+export * from './types/websets.js';
+
+// Combined types for tools that use both Exa and Websets APIs
+export interface WebsetCreationArgs {
+  query: string;
+  count?: number;
+  entityType?: string;
+  criteria?: string[];
+  enrichments?: Array<{
+    description: string;
+    format: string;
+    options?: string[];
+  }>;
+  externalId?: string;
+  metadata?: Record<string, string>;
+}
+
+export interface WebsetStatusArgs {
+  websetId: string;
+  expand?: string;
+  includeDetails?: boolean;
+}
+
+export interface WebsetItemsArgs {
+  websetId: string;
+  limit?: number;
+  cursor?: string;
+  includeEnrichments?: boolean;
+}
+
+export interface EnrichmentCreationArgs {
+  websetId: string;
+  description: string;
+  format: 'text' | 'date' | 'number' | 'options' | 'email' | 'phone';
+  options?: string[];
+  metadata?: Record<string, string>;
+}
+
+export interface SearchCreationArgs {
+  websetId: string;
+  query: string;
+  count: number;
+  entityType: string;
+  criteria?: string[];
+  metadata?: Record<string, string>;
+}
