@@ -298,6 +298,10 @@ export class EventPoller extends EventEmitter {
   async shutdown(): Promise<void> {
     this.isShuttingDown = true;
     this.stop();
+    
+    // Clean up event listeners
+    this.removeAllListeners();
+    
     this.emit('shutdown');
   }
 

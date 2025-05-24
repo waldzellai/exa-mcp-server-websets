@@ -387,6 +387,17 @@ export class EventProcessor extends EventEmitter {
       console.warn(`Processor shutdown with ${this.activeWorkers.size} workers still active`);
     }
 
+    // Clean up arrays to prevent memory leaks
+    this.processingTimes.length = 0;
+    this.deadLetterQueue.length = 0;
+    this.activeWorkers.clear();
+    
+    // Clear handler registry
+    this.handlerRegistry.clear();
+    
+    // Remove all event listeners
+    this.removeAllListeners();
+
     this.emit('shutdown');
   }
 

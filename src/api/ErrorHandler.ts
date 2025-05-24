@@ -6,25 +6,29 @@
 
 import { ApiError, ApiErrorType } from '../types/websets.js';
 import { log } from '../utils/logger.js';
+import { maskSensitiveData } from '../utils/security.js';
 
 export class ApiErrorHandler {
   /**
    * Classify an error based on its characteristics
    */
-  static classify(error: any): ApiErrorType {
+  static classify(error: unknown): ApiErrorType {
+    // Type guard for error-like objects
+    const errorObj = error as any;
+    
     // Network/connection errors
-    if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND' || error.code === 'ECONNRESET') {
+    if (errorObj?.code === 'ECONNREFUSED' || errorObj?.code === 'ENOTFOUND' || errorObj?.code === 'ECONNRESET') {
       return ApiErrorType.NETWORK_ERROR;
     }
 
     // Timeout errors
-    if (error.code === 'ETIMEDOUT' || error.message?.includes('timeout')) {
+    if (errorObj?.code === 'ETIMEDOUT' || errorObj?.message?.includes('timeout')) {
       return ApiErrorType.TIMEOUT_ERROR;
     }
 
     // HTTP status code based classification
-    if (error.response?.status) {
-      const status = error.response.status;
+    if (errorObj?.response?.status) {
+      const status = errorObj.response.status;
       
       if (status === 401) {
         return ApiErrorType.AUTHENTICATION;
@@ -52,7 +56,7 @@ export class ApiErrorHandler {
     }
 
     // Circuit breaker errors
-    if (error.message?.includes('circuit breaker')) {
+    if (errorObj?.message?.includes('circuit breaker')) {
       return ApiErrorType.CIRCUIT_BREAKER_OPEN;
     }
 
@@ -108,10 +112,11 @@ export class ApiErrorHandler {
     
     if (error.details) {
       if (typeof error.details === 'string') {
-        message += ` - ${error.details}`;
+        message += ` - ${maskSensitiveData(error.details)}`;
       } else if (typeof error.details === 'object') {
         try {
-          message += ` - ${JSON.stringify(error.details)}`;
+          const maskedDetails = maskSensitiveData(error.details);
+          message += ` - ${JSON.stringify(maskedDetails)}`;
         } catch {
           message += ` - [Complex error details]`;
         }
@@ -124,28 +129,32 @@ export class ApiErrorHandler {
   /**
    * Create a standardized ApiError from various error types
    */
-  static createApiError(error: any): ApiError {
+  static createApiError(error: unknown): ApiError {
     const errorType = this.classify(error);
     
     // Extract error information based on error structure
     let code = errorType;
     let message = 'An unknown error occurred';
-    let details: any = undefined;
+    let details: unknown = undefined;
 
-    if (error.response?.data?.error) {
-      // Structured API error response
-      const apiError = error.response.data.error;
-      code = apiError.code || errorType;
-      message = apiError.message || message;
-      details = apiError.details;
-    } else if (error.message) {
-      // Standard Error object
-      message = error.message;
-      details = {
-        stack: error.stack,
-        code: error.code,
-        status: error.response?.status,
-      };
+    if (error && typeof error === 'object' && 'response' in error) {
+      const responseError = error as any;
+      if (responseError.response?.data?.error) {
+        // Structured API error response
+        const apiError = responseError.response.data.error;
+        code = apiError.code || errorType;
+        message = apiError.message || message;
+        details = apiError.details;
+      } else if ('message' in error && typeof (error as any).message === 'string') {
+        // Standard Error object
+        const err = error as any;
+        message = err.message;
+        details = {
+          stack: err.stack,
+          code: err.code,
+          status: responseError.response?.status,
+        };
+      }
     } else if (typeof error === 'string') {
       // String error
       message = error;

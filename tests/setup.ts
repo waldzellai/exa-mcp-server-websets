@@ -22,17 +22,17 @@ jest.useFakeTimers();
 // Global test utilities
 global.testUtils = {
   // Helper to create mock functions with proper typing
-  createMockFn: <T extends (...args: any[]) => any>(implementation?: T): jest.MockedFunction<T> => {
-    return jest.fn(implementation) as unknown as jest.MockedFunction<T>;
+  createMockFn: function(implementation?: any): jest.MockedFunction<any> {
+    return jest.fn(implementation) as jest.MockedFunction<any>;
   },
 
   // Helper to create async mock functions
-  createAsyncMockFn: <T>(resolveValue?: T): jest.MockedFunction<() => Promise<T>> => {
+  createAsyncMockFn: function(resolveValue?: any): jest.MockedFunction<() => Promise<any>> {
     const mockFn = jest.fn();
     if (resolveValue !== undefined) {
       (mockFn as any).mockResolvedValue(resolveValue);
     }
-    return mockFn as jest.MockedFunction<() => Promise<T>>;
+    return mockFn as jest.MockedFunction<() => Promise<any>>;
   },
 
   // Helper to advance timers and flush promises
@@ -53,15 +53,15 @@ global.testUtils = {
 
   // Helper to generate test IDs
   generateTestId: (prefix: string = 'test'): string => {
-    return `${prefix}-${Math.random().toString(36).substr(2, 9)}`;
+    return `${prefix}-${Math.random().toString(36).substring(2, 11)}`;
   }
 };
 
 // Extend global types
 declare global {
   var testUtils: {
-    createMockFn: <T extends (...args: any[]) => any>(implementation?: T) => jest.MockedFunction<T>;
-    createAsyncMockFn: <T>(resolveValue?: T) => jest.MockedFunction<() => Promise<T>>;
+    createMockFn: (implementation?: any) => jest.MockedFunction<any>;
+    createAsyncMockFn: (resolveValue?: any) => jest.MockedFunction<() => Promise<any>>;
     advanceTimersAndFlush: (ms?: number) => Promise<void>;
     waitForNextTick: () => Promise<void>;
     createTestDate: (offset?: number) => Date;

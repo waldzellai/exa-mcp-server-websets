@@ -21,6 +21,7 @@ import { ItemService } from './ItemService.js';
 import { EnrichmentService } from './EnrichmentService.js';
 import { EventService } from './EventService.js';
 import { WebhookService } from './WebhookService.js';
+import { SecureTokenProvider } from '../utils/security.js';
 
 export interface ServiceContainer {
   websetService: WebsetService;
@@ -72,6 +73,7 @@ export function createServiceContainer(apiClient: WebsetsApiClient): ServiceCont
      enableMetrics: false,
    };
    
-   const apiClient = new WebsetsApiClient(config, clientConfig);
+   const tokenProvider = new SecureTokenProvider(() => config.apiKey);
+   const apiClient = new WebsetsApiClient(config, clientConfig, tokenProvider);
    return createServiceContainer(apiClient);
  }

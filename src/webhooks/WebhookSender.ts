@@ -8,6 +8,7 @@
 import { EventEmitter } from 'events';
 import { WebsetEvent, Webhook } from '../types/websets.js';
 import { WebhookSubscription } from './WebhookRegistry.js';
+import { createWebhookHeaders, generateWebhookSecret } from '../utils/security.js';
 
 /**
  * Webhook delivery configuration
@@ -29,6 +30,8 @@ export interface WebhookSenderConfig {
   userAgent: string;
   /** Whether to verify SSL certificates */
   verifySsl: boolean;
+  /** Webhook signing secret (generated if not provided) */
+  signingSecret?: string;
 }
 
 /**
@@ -123,10 +126,12 @@ export class WebhookSender extends EventEmitter {
   };
   private readonly deliveryTimes: number[] = [];
   private isShuttingDown = false;
+  private readonly signingSecret: string;
 
   constructor(config: Partial<WebhookSenderConfig> = {}) {
     super();
     this.config = { ...DEFAULT_WEBHOOK_SENDER_CONFIG, ...config };
+    this.signingSecret = this.config.signingSecret || generateWebhookSecret();
   }
 
   /**
@@ -308,7 +313,7 @@ export class WebhookSender extends EventEmitter {
    */
   private createWebhookPayload(event: WebsetEvent, webhook: Webhook): any {
     return {
-      id: `evt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id: `evt_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
       object: 'event',
       type: event.type,
       data: event.data,
@@ -340,10 +345,16 @@ export class WebhookSender extends EventEmitter {
     headers: Record<string, string>;
   }> {
     const body = JSON.stringify(payload);
+    const webhookId = payload.id || `webhook_${Date.now()}`;
+    const effectiveSecret = secret || this.signingSecret;
+    
+    // Create secure webhook headers with HMAC signature
+    const securityHeaders = createWebhookHeaders(body, effectiveSecret, webhookId);
+    
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       'User-Agent': this.config.userAgent,
-      'X-Webhook-Timestamp': Math.floor(Date.now() / 1000).toString(),
+      ...securityHeaders,
     };
 
     // Add signature if secret is provided

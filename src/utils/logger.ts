@@ -5,6 +5,10 @@ export const log = (message: string): void => {
   console.error(`[EXA-MCP-DEBUG] ${message}`);
 };
 
+log.error = (message: string, error?: unknown): void => {
+  console.error(`[EXA-MCP-ERROR] ${message}`, error);
+};
+
 export const createRequestLogger = (requestId: string, toolName: string) => {
   return {
     log: (message: string): void => {

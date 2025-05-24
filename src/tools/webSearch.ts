@@ -1,6 +1,6 @@
 import { z } from "zod";
 import axios from "axios";
-import { toolRegistry, API_CONFIG } from "./config.js";
+import { toolRegistry, EXA_API_CONFIG, ToolCategory, ServiceType } from "./config.js";
 import { ExaSearchRequest, ExaSearchResponse } from "../types.js";
 import { createRequestLogger } from "../utils/logger.js";
 
@@ -12,6 +12,8 @@ toolRegistry["web_search_exa"] = {
     query: z.string().describe("Search query"),
     numResults: z.number().optional().describe("Number of search results to return (default: 5)")
   },
+  category: ToolCategory.SEARCH,
+  service: ServiceType.EXA_SEARCH,
   handler: async ({ query, numResults }, extra) => {
     const requestId = `web_search_exa-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
     const logger = createRequestLogger(requestId, 'web_search_exa');
@@ -21,7 +23,7 @@ toolRegistry["web_search_exa"] = {
     try {
       // Create a fresh axios instance for each request
       const axiosInstance = axios.create({
-        baseURL: API_CONFIG.BASE_URL,
+        baseURL: EXA_API_CONFIG.BASE_URL,
         headers: {
           'accept': 'application/json',
           'content-type': 'application/json',
@@ -33,10 +35,10 @@ toolRegistry["web_search_exa"] = {
       const searchRequest: ExaSearchRequest = {
         query,
         type: "auto",
-        numResults: numResults || API_CONFIG.DEFAULT_NUM_RESULTS,
+        numResults: numResults || EXA_API_CONFIG.DEFAULT_NUM_RESULTS,
         contents: {
           text: {
-            maxCharacters: API_CONFIG.DEFAULT_MAX_CHARACTERS
+            maxCharacters: EXA_API_CONFIG.DEFAULT_MAX_CHARACTERS
           },
           livecrawl: 'always'
         }
@@ -45,7 +47,7 @@ toolRegistry["web_search_exa"] = {
       logger.log("Sending request to Exa API");
       
       const response = await axiosInstance.post<ExaSearchResponse>(
-        API_CONFIG.ENDPOINTS.SEARCH,
+        EXA_API_CONFIG.ENDPOINTS.SEARCH,
         searchRequest,
         { timeout: 25000 }
       );

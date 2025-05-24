@@ -8,6 +8,8 @@ import { WebsetsApiClient } from '../api/WebsetsApiClient.js';
 import { ApiResponse, PaginatedResponse, ApiError } from '../types/websets.js';
 import { ApiErrorHandler } from '../api/ErrorHandler.js';
 import { log } from '../utils/logger.js';
+import { sanitizeObject, validateUrl, ValidationError } from '../utils/validation.js';
+import { maskSensitiveData } from '../utils/security.js';
 
 export abstract class BaseService {
   protected apiClient: WebsetsApiClient;
@@ -26,8 +28,9 @@ export abstract class BaseService {
     limit?: number
   ): Promise<PaginatedResponse<T>> {
     try {
+      const sanitizedParams = this.sanitizeParams(params);
       const requestParams = {
-        ...params,
+        ...sanitizedParams,
         ...(cursor && { cursor }),
         ...(limit && { limit }),
       };
@@ -60,7 +63,8 @@ export abstract class BaseService {
    */
   protected async handlePostRequest<T>(endpoint: string, data?: any): Promise<T> {
     try {
-      const response = await this.apiClient.post<T>(endpoint, data);
+      const sanitizedData = data ? this.sanitizeParams(data) : undefined;
+      const response = await this.apiClient.post<T>(endpoint, sanitizedData);
       return response.data;
     } catch (error) {
       const apiError = ApiErrorHandler.createApiError(error);
@@ -125,18 +129,25 @@ export abstract class BaseService {
   }
 
   /**
-   * Sanitize parameters by removing undefined/null values
+   * Sanitize parameters by removing undefined/null values and preventing XSS
    */
   protected sanitizeParams(params: Record<string, any>): Record<string, any> {
-    const sanitized: Record<string, any> = {};
-    
-    for (const [key, value] of Object.entries(params)) {
-      if (value !== undefined && value !== null) {
-        sanitized[key] = value;
+    return sanitizeObject(params);
+  }
+  
+  /**
+   * Validate and sanitize URL
+   */
+  protected validateUrl(url: string): boolean {
+    try {
+      validateUrl(url);
+      return true;
+    } catch (error) {
+      if (error instanceof ValidationError) {
+        this.logOperation('URL validation failed', { url, error: error.message });
       }
+      return false;
     }
-    
-    return sanitized;
   }
 
   /**
@@ -160,7 +171,8 @@ export abstract class BaseService {
     const message = `[${serviceName}] ${operation}`;
     
     if (details) {
-      log(`${message}: ${JSON.stringify(details)}`);
+      const maskedDetails = maskSensitiveData(details);
+      log(`${message}: ${JSON.stringify(maskedDetails)}`);
     } else {
       log(message);
     }
@@ -223,17 +235,6 @@ export abstract class BaseService {
     return new Date(dateString);
   }
 
-  /**
-   * Validate URL format
-   */
-  protected validateUrl(url: string): boolean {
-    try {
-      new URL(url);
-      return true;
-    } catch {
-      return false;
-    }
-  }
 
   /**
    * Validate email format
