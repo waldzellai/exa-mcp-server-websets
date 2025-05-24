@@ -16,6 +16,7 @@ import {
 import { ApiErrorHandler } from './ErrorHandler.js';
 import { RateLimiter, CircuitBreaker } from './RateLimiter.js';
 import { log } from '../utils/logger.js';
+import { TokenProvider, maskSensitiveData } from '../utils/security.js';
 
 export class WebsetsApiClient {
   private httpClient: AxiosInstance;
@@ -23,21 +24,41 @@ export class WebsetsApiClient {
   private circuitBreaker: CircuitBreaker;
   private config: WebsetsConfig;
   private clientConfig: ApiClientConfig;
+  private tokenProvider: TokenProvider;
 
-  constructor(config: WebsetsConfig, clientConfig: ApiClientConfig) {
+  constructor(
+    config: WebsetsConfig, 
+    clientConfig: ApiClientConfig,
+    tokenProvider: TokenProvider
+  ) {
     this.config = config;
     this.clientConfig = clientConfig;
+    this.tokenProvider = tokenProvider;
 
-    // Initialize HTTP client
+    // Initialize HTTP client without auth header
     this.httpClient = axios.create({
       baseURL: config.baseUrl,
       timeout: config.timeout,
       headers: {
-        'Authorization': `Bearer ${config.apiKey}`,
         'User-Agent': clientConfig.userAgent,
         ...clientConfig.defaultHeaders,
       },
     });
+
+    // Add request interceptor to inject auth header
+    this.httpClient.interceptors.request.use(
+      (config) => {
+        try {
+          const token = this.tokenProvider.getToken();
+          config.headers['Authorization'] = `Bearer ${token}`;
+        } catch (error) {
+          log.error('Failed to get API token', error);
+          throw error;
+        }
+        return config;
+      },
+      (error) => Promise.reject(error)
+    );
 
     // Initialize rate limiter
     this.rateLimiter = new RateLimiter({

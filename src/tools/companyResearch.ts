@@ -1,6 +1,6 @@
 import { z } from "zod";
 import axios from "axios";
-import { toolRegistry, API_CONFIG } from "./config.js";
+import { toolRegistry, EXA_API_CONFIG, ToolCategory, ServiceType } from "./config.js";
 import { ExaSearchRequest, ExaSearchResponse } from "../types.js";
 import { createRequestLogger } from "../utils/logger.js";
 
@@ -22,7 +22,7 @@ toolRegistry["company_research"] = {
     try {
       // Create a fresh axios instance for each request
       const axiosInstance = axios.create({
-        baseURL: API_CONFIG.BASE_URL,
+        baseURL: EXA_API_CONFIG.BASE_URL,
         headers: {
           'accept': 'application/json',
           'content-type': 'application/json',
@@ -50,7 +50,7 @@ toolRegistry["company_research"] = {
         numResults: 1,
         contents: {
           text: {
-            maxCharacters: API_CONFIG.DEFAULT_MAX_CHARACTERS
+            maxCharacters: EXA_API_CONFIG.DEFAULT_MAX_CHARACTERS
           },
           livecrawl: 'always',
           subpages: subpages || 10,
@@ -67,7 +67,7 @@ toolRegistry["company_research"] = {
       logger.log("Sending company research request to Exa API");
       
       const response = await axiosInstance.post<ExaSearchResponse>(
-        API_CONFIG.ENDPOINTS.SEARCH,
+        EXA_API_CONFIG.ENDPOINTS.SEARCH,
         searchRequest,
         { timeout: 25000 }
       );
@@ -123,5 +123,7 @@ toolRegistry["company_research"] = {
       };
     }
   },
-  enabled: false  // Disabled by default
+  enabled: false,  // Disabled by default
+  category: ToolCategory.SEARCH,
+  service: ServiceType.EXA_SEARCH
 }; 

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import axios from "axios";
-import { toolRegistry, API_CONFIG } from "./config.js";
+import { toolRegistry, EXA_API_CONFIG, ToolCategory, ServiceType } from "./config.js";
 import { ExaSearchRequest, ExaSearchResponse } from "../types.js";
 import { createRequestLogger } from "../utils/logger.js";
 
@@ -21,7 +21,7 @@ toolRegistry["linkedin_search"] = {
     try {
       // Create a fresh axios instance for each request
       const axiosInstance = axios.create({
-        baseURL: API_CONFIG.BASE_URL,
+        baseURL: EXA_API_CONFIG.BASE_URL,
         headers: {
           'accept': 'application/json',
           'content-type': 'application/json',
@@ -35,10 +35,10 @@ toolRegistry["linkedin_search"] = {
         query,
         type: "auto",
         includeDomains: ["linkedin.com"],
-        numResults: numResults || API_CONFIG.DEFAULT_NUM_RESULTS,
+        numResults: numResults || EXA_API_CONFIG.DEFAULT_NUM_RESULTS,
         contents: {
           text: {
-            maxCharacters: API_CONFIG.DEFAULT_MAX_CHARACTERS
+            maxCharacters: EXA_API_CONFIG.DEFAULT_MAX_CHARACTERS
           },
           livecrawl: 'always'
         }
@@ -47,7 +47,7 @@ toolRegistry["linkedin_search"] = {
       logger.log("Sending request to Exa API");
       
       const response = await axiosInstance.post<ExaSearchResponse>(
-        API_CONFIG.ENDPOINTS.SEARCH,
+        EXA_API_CONFIG.ENDPOINTS.SEARCH,
         searchRequest,
         { timeout: 25000 }
       );
@@ -103,5 +103,7 @@ toolRegistry["linkedin_search"] = {
       };
     }
   },
-  enabled: false
+  enabled: false,
+  category: ToolCategory.SEARCH,
+  service: ServiceType.EXA_SEARCH
 }; 
