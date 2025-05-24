@@ -51,6 +51,20 @@ export interface Webset {
 }
 
 export interface CreateWebsetRequest {
+  search?: {
+    query: string;
+    count?: number;
+    entity?: {
+      type: string;
+    };
+    criteria?: Array<{
+      description: string;
+    }>;
+  };
+  enrichments?: Array<{
+    description: string;
+    format?: string;
+  }>;
   externalId?: string;
   metadata?: Record<string, string>;
 }

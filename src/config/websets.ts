@@ -89,7 +89,7 @@ export interface ApiClientConfig {
  * Default configuration values
  */
 const DEFAULT_CONFIG: Omit<WebsetsConfig, 'apiKey'> = {
-  baseUrl: 'https://api.exa.ai/websets',
+  baseUrl: 'https://api.exa.ai/websets/v0',
   timeout: 30000, // 30 seconds
   retryAttempts: 3,
   retryDelay: 1000, // 1 second

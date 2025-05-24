@@ -6,7 +6,7 @@ import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 
 // Import the tool registry system
-import { toolRegistry } from "./tools/index.js";
+import { toolRegistry, ToolFactory, ToolCategory, ServiceType } from "./tools/index.js";
 import { log } from "./utils/logger.js";
 
 dotenv.config();
@@ -15,7 +15,7 @@ dotenv.config();
 const argv = yargs(hideBin(process.argv))
   .option('tools', {
     type: 'string',
-    description: 'Comma-separated list of tools to enable (if not specified, all enabled-by-default tools are used)',
+    description: 'Comma-separated list of tools or categories to enable. Categories: search, websets, unified. Use "unified" for simplified websets experience. If not specified, defaults to search + unified.',
     default: ''
   })
   .option('list-tools', {
@@ -33,16 +33,60 @@ const specifiedTools = new Set<string>(
   toolsString ? toolsString.split(',').map((tool: string) => tool.trim()) : []
 );
 
+// Define tool categories for easier selection
+const TOOL_CATEGORIES = {
+  search: ['web_search_exa', 'research_paper_search', 'company_research', 'crawling', 'competitor_finder', 'linkedin_search', 'wikipedia_search_exa', 'github_search'],
+  websets: Object.keys(toolRegistry).filter(key => toolRegistry[key].category === ToolCategory.WEBSETS && !['websets_manager', 'websets_guide'].includes(key)),
+  unified: ['websets_manager', 'websets_guide'], // The simplified tools
+  all: Object.keys(toolRegistry)
+};
+
+// Expand categories into individual tool names
+function expandToolSelection(selection: Set<string>): Set<string> {
+  const expanded = new Set<string>();
+  
+  selection.forEach(item => {
+    if (TOOL_CATEGORIES[item as keyof typeof TOOL_CATEGORIES]) {
+      // It's a category, add all tools in that category
+      TOOL_CATEGORIES[item as keyof typeof TOOL_CATEGORIES].forEach(tool => expanded.add(tool));
+    } else {
+      // It's an individual tool name
+      expanded.add(item);
+    }
+  });
+  
+  return expanded;
+}
+
+// Apply category expansion
+const expandedTools = expandToolSelection(specifiedTools);
+
 // List all available tools if requested
 if (argvObj['list-tools']) {
-  console.log("Available tools:");
+  console.log("Available tool categories:");
+  console.log("- search: All search tools (web search, research papers, GitHub, etc.)");
+  console.log("- unified: Simplified websets manager + guide (RECOMMENDED)");
+  console.log("- websets: Individual websets tools (legacy, complex)");
+  console.log("- all: Every available tool");
+  console.log();
+  
+  console.log("Individual tools:");
   
   Object.entries(toolRegistry).forEach(([id, tool]) => {
-    console.log(`- ${id}: ${tool.name}`);
+    const category = tool.category || 'uncategorized';
+    console.log(`- ${id}: ${tool.name} (${category})`);
     console.log(`  Description: ${tool.description}`);
     console.log(`  Enabled by default: ${tool.enabled ? 'Yes' : 'No'}`);
     console.log();
   });
+  
+  console.log("Usage examples:");
+  console.log("  --tools=unified           # Simplified manager + guide (recommended)");
+  console.log("  --tools=search,unified    # Search tools + simplified websets");
+  console.log("  --tools=search            # Only search tools"); 
+  console.log("  --tools=websets           # All individual websets tools (complex)");
+  console.log("  --tools=web_search_exa    # Only web search tool");
+  console.log("  --tools=websets_guide     # Just the helpful guide tool");
   
   process.exit(0);
 }
@@ -83,11 +127,17 @@ class ExaServer {
     const registeredTools: string[] = [];
     
     Object.entries(toolRegistry).forEach(([toolId, tool]) => {
-      // If specific tools were provided, only enable those.
-      // Otherwise, enable all tools marked as enabled by default
-      const shouldRegister = specifiedTools.size > 0 
-        ? specifiedTools.has(toolId) 
-        : tool.enabled;
+      let shouldRegister = false;
+      
+      if (expandedTools.size > 0) {
+        // Specific tools/categories were provided
+        shouldRegister = expandedTools.has(toolId);
+      } else {
+        // No specific tools provided - use default selection
+        // Default: search tools + unified websets manager (simplified experience)
+        const defaultTools = new Set([...TOOL_CATEGORIES.search, ...TOOL_CATEGORIES.unified]);
+        shouldRegister = defaultTools.has(toolId);
+      }
       
       if (shouldRegister) {
         this.server.tool(
