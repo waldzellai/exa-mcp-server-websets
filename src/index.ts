@@ -136,3 +136,15 @@ class ExaServer {
     process.exit(1);
   }
 })();
+// Export all components for library usage
+export * from './api/index.js';
+export * from './services/index.js';
+export * from './events/index.js';
+export * from './webhooks/index.js';
+export * from './state/index.js';
+export * from './types/websets.js';
+export * from './config/websets.js';
+export * from './utils/logger.js';
+
+// Export the main server class for programmatic usage
+export { ExaServer };

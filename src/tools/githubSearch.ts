@@ -1,6 +1,6 @@
 import { z } from "zod";
 import axios from "axios";
-import { toolRegistry, API_CONFIG } from "./config.js";
+import { toolRegistry, EXA_API_CONFIG, ToolCategory, ServiceType } from "./config.js";
 import { ExaSearchRequest, ExaSearchResponse } from "../types.js";
 import { createRequestLogger } from "../utils/logger.js";
 
@@ -21,7 +21,7 @@ toolRegistry["github_search"] = {
     try {
       // Create a fresh axios instance for each request
       const axiosInstance = axios.create({
-        baseURL: API_CONFIG.BASE_URL,
+        baseURL: EXA_API_CONFIG.BASE_URL,
         headers: {
           'accept': 'application/json',
           'content-type': 'application/json',
@@ -37,7 +37,7 @@ toolRegistry["github_search"] = {
         query: githubQuery,
         type: "auto",
         includeDomains: ["github.com"],
-        numResults: numResults || API_CONFIG.DEFAULT_NUM_RESULTS,
+        numResults: numResults || EXA_API_CONFIG.DEFAULT_NUM_RESULTS,
         contents: {
           text: true,
           livecrawl: 'always'
@@ -47,7 +47,7 @@ toolRegistry["github_search"] = {
       logger.log("Sending request to Exa API for GitHub search");
       
       const response = await axiosInstance.post<ExaSearchResponse>(
-        API_CONFIG.ENDPOINTS.SEARCH,
+        EXA_API_CONFIG.ENDPOINTS.SEARCH,
         searchRequest,
         { timeout: 25000 }
       );
@@ -103,5 +103,7 @@ toolRegistry["github_search"] = {
       };
     }
   },
-  enabled: false
+  enabled: false,
+  category: ToolCategory.SEARCH,
+  service: ServiceType.EXA_SEARCH
 }; 

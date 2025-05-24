@@ -1,6 +1,6 @@
 import { z } from "zod";
 import axios from "axios";
-import { toolRegistry, API_CONFIG } from "./config.js";
+import { toolRegistry, EXA_API_CONFIG, ToolCategory, ServiceType } from "./config.js";
 import { ExaCrawlRequest } from "../types.js";
 import { createRequestLogger } from "../utils/logger.js";
 
@@ -20,7 +20,7 @@ toolRegistry["crawling"] = {
     try {
       // Create a fresh axios instance for each request
       const axiosInstance = axios.create({
-        baseURL: API_CONFIG.BASE_URL,
+        baseURL: EXA_API_CONFIG.BASE_URL,
         headers: {
           'accept': 'application/json',
           'content-type': 'application/json',
@@ -95,5 +95,7 @@ toolRegistry["crawling"] = {
       };
     }
   },
-  enabled: false  // Disabled by default
+  enabled: false,  // Disabled by default
+  category: ToolCategory.SEARCH,
+  service: ServiceType.EXA_SEARCH
 }; 
