@@ -53,7 +53,7 @@ export function createServiceContainer(apiClient: WebsetsApiClient): ServiceCont
  export function createServices(apiKey: string, baseUrl?: string): ServiceContainer {
    const config: WebsetsConfig = {
      apiKey,
-     baseUrl: baseUrl || 'https://api.exa.ai',
+     baseUrl: baseUrl || 'https://api.exa.ai/websets/v0',
      timeout: 30000,
      retryAttempts: 3,
      retryDelay: 1000,
