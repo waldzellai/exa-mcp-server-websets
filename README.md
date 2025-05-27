@@ -12,6 +12,13 @@ This MCP server provides three essential tools:
 - **web_search_exa**: Real-time web search capabilities powered by Exa AI
 - **websets_guide**: Helpful guidance and examples for using websets effectively
 
+### Why Choose This Server?
+
+- **Simplified**: Just 3 tools instead of 20+ individual ones
+- **Comprehensive**: The websets_manager handles all 20 websets operations in one tool
+- **Fast**: No dynamic tool loading - all tools are immediately available
+- **Reliable**: 100% operational coverage with graceful error handling
+
 ## Remote Exa Websets MCP 🌐
 
 Connect directly to Exa's hosted MCP server (instead of running it locally).
@@ -115,7 +122,7 @@ npm install -g exa-websets-mcp-server
 claude mcp add exa-websets -e EXA_API_KEY=your-api-key-here -- npx exa-websets-mcp-server
 
 # Or if you have built the project locally:
-claude mcp add exa-websets -e EXA_API_KEY=your-api-key-here -- node /path/to/exa-mcp-server-websets/build/index.js
+claude mcp add exa-websets -e EXA_API_KEY=your-api-key-here -- node /path/to/exa-websets-mcp-server/build/index.js
 ```
 
 After adding the server, you can check its status with:
