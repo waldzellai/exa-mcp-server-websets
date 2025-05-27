@@ -104,9 +104,19 @@ class ExaServer {
 
   private setupKeepAlive(): void {
     // Send a heartbeat every 30 seconds to prevent timeout
-    this.keepAliveInterval = setInterval(() => {
-      // MCP protocol doesn't have explicit heartbeat, but we can log to show activity
-      log("Server heartbeat - connection active");
+    this.keepAliveInterval = setInterval(async () => {
+      try {
+        // Send a debug-level logging message over the MCP connection
+        // This keeps the stdio connection active
+        await this.server.server.sendLoggingMessage({
+          level: "debug",
+          data: "Keep-alive heartbeat",
+          logger: "server"
+        });
+        log("Server heartbeat sent");
+      } catch (error) {
+        log(`Failed to send heartbeat: ${error}`);
+      }
     }, 30000);
 
     // Clean up on process exit
