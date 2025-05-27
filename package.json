@@ -1,11 +1,11 @@
 {
   "name": "exa-websets-mcp-server",
   "version": "1.0.0",
-  "description": "A Model Context Protocol server for Exa AI's websets management and web search capabilities. Provides comprehensive websets collection management, real-time web searching, and helpful guidance through a simplified interface.",
+  "description": "A Model Context Protocol server for Exa Websets management. Provides comprehensive websets collection management, real-time web searching, and helpful guidance through a simplified interface.",
   "type": "module",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/exa-labs/exa-websets-mcp-server.git"
+    "url": "git+https://github.com/waldzellai/exa-websets-mcp-server.git"
   },
   "bin": {
     "exa-websets-mcp-server": "./build/index.js"
@@ -24,7 +24,7 @@
     "collections",
     "content management"
   ],
-  "author": "Exa Labs",
+  "author": "Exa Labs + Waldzell AI",
   "scripts": {
     "build": "tsc && node -e \"require('fs').chmodSync('build/index.js', '755')\"",
     "prepare": "npm run build",
