@@ -223,6 +223,11 @@ npx exa-websets-mcp-server
 
 ## Changelog
 
+### v1.0.2 (2025-05-27)
+- Fixed keep-alive mechanism to prevent connection timeouts
+- Now sends MCP logging messages to maintain stdio connection
+- Prevents Claude Desktop disconnections during idle periods
+
 ### v1.0.1 (2025-05-27)
 - Fixed authentication header from 'Authorization: Bearer' to 'x-api-key'
 - Resolved network errors in websets operations
