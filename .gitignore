@@ -14,6 +14,10 @@ test-results/
 
 # Test files in current directory
 test-*.js
+test-cancel-search.js
+test-enhanced-list-content-items.js
+test-event-service.js
+test-fixes.js
 
 # Parent directory test files
 ../comprehensive_websets_manager_test.js
