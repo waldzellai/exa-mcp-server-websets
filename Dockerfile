@@ -1,3 +1,7 @@
+# Exa Websets MCP Server
+# Provides websets management and search capabilities through MCP
+# Tools: websets_manager, web_search_exa, websets_guide
+
 # Use the official Node.js 18 image as a parent image
 FROM node:18-alpine AS builder
 
@@ -29,11 +33,9 @@ COPY package.json package-lock.json ./
 # Install only production dependencies
 RUN npm ci --production --ignore-scripts
 
-# Set environment variable for the Exa API key
-ENV EXA_API_KEY=your-api-key-here
+# The Exa API key must be provided at runtime
+# Example: docker run -e EXA_API_KEY=your-actual-key exa-websets-mcp-server
+ENV EXA_API_KEY=""
 
-# Expose the port the app runs on
-EXPOSE 3000
-
-# Run the application
+# Run the MCP server (communicates via stdio, not HTTP)
 ENTRYPOINT ["node", "build/index.js"]
