@@ -5,20 +5,20 @@ import dotenv from "dotenv";
 // Removed yargs - no longer needed for tool selection
 
 // Import only the tools we need
-import websetsManagerTool from "./tools/websetsManager.js";
 import websetsGuideTool from "./tools/websetsGuide.js";
 import { log } from "./utils/logger.js";
-
-// We'll need to extract the web search tool from the registry
-import "./tools/webSearch.js"; // This registers the tool
 import { toolRegistry } from "./tools/config.js";
+
+// Import tools to register them
+import "./tools/webSearch.js";
+import "./tools/websetsManager.js";
 
 dotenv.config();
 
 // Create our simplified tool registry with three tools
 const simplifiedRegistry = {
   web_search_exa: toolRegistry["web_search_exa"],
-  websets_manager: websetsManagerTool,
+  websets_manager: toolRegistry["websets_manager"], 
   websets_guide: websetsGuideTool
 };
 
@@ -59,11 +59,16 @@ class ExaServer {
     
     Object.entries(simplifiedRegistry).forEach(([toolId, tool]) => {
       if (tool) {
+        // Handle both formats - websetsGuide uses inputSchema/execute
+        // while tools from registry use schema/handler
+        const schema = (tool as any).inputSchema || tool.schema;
+        const handler = (tool as any).execute || tool.handler;
+        
         this.server.tool(
           tool.name,
           tool.description,
-          tool.inputSchema || tool.schema,
-          tool.execute || tool.handler
+          schema,
+          handler
         );
         registeredTools.push(toolId);
       }
