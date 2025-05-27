@@ -2,20 +2,24 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import dotenv from "dotenv";
-import yargs from 'yargs';
-import { hideBin } from 'yargs/helpers';
+// Removed yargs - no longer needed for tool selection
 
 // Import only the tools we need
-import webSearchTool from "./tools/webSearch.js";
 import websetsManagerTool from "./tools/websetsManager.js";
+import websetsGuideTool from "./tools/websetsGuide.js";
 import { log } from "./utils/logger.js";
+
+// We'll need to extract the web search tool from the registry
+import "./tools/webSearch.js"; // This registers the tool
+import { toolRegistry } from "./tools/config.js";
 
 dotenv.config();
 
-// Simple tool registry for our two tools
-const toolRegistry = {
-  web_search_exa: webSearchTool,
-  websets_manager: websetsManagerTool
+// Create our simplified tool registry with three tools
+const simplifiedRegistry = {
+  web_search_exa: toolRegistry["web_search_exa"],
+  websets_manager: websetsManagerTool,
+  websets_guide: websetsGuideTool
 };
 
 // Check for API key after handling list-tools to allow listing without a key
@@ -30,9 +34,10 @@ if (!API_KEY) {
  * This MCP server provides Exa AI's websets management capabilities and basic web search
  * functionality to AI assistants through the Model Context Protocol.
  * 
- * The server provides two essential tools:
+ * The server provides three essential tools:
  * - websets_manager: Comprehensive websets collection management
  * - web_search_exa: Real-time web searching capabilities
+ * - websets_guide: Helpful guidance for using websets
  */
 
 class ExaServer {
@@ -52,14 +57,16 @@ class ExaServer {
     // Register our two tools
     const registeredTools: string[] = [];
     
-    Object.entries(toolRegistry).forEach(([toolId, tool]) => {
-      this.server.tool(
-        tool.name,
-        tool.description,
-        tool.inputSchema,
-        tool.execute
-      );
-      registeredTools.push(toolId);
+    Object.entries(simplifiedRegistry).forEach(([toolId, tool]) => {
+      if (tool) {
+        this.server.tool(
+          tool.name,
+          tool.description,
+          tool.inputSchema || tool.schema,
+          tool.execute || tool.handler
+        );
+        registeredTools.push(toolId);
+      }
     });
     
     return registeredTools;
