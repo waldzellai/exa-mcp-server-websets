@@ -4,6 +4,10 @@ import { createServices } from "../services/index.js";
 import { createRequestLogger } from "../utils/logger.js";
 import { withKeepAlive } from "../utils/keepAlive.js";
 
+// Store mappings for searches and enrichments to their websets
+const searchToWebsetMap = new Map<string, string>();
+const enrichmentToWebsetMap = new Map<string, string>();
+
 /**
  * Unified Websets Manager Tool
  * 
@@ -101,11 +105,11 @@ const EnhancementParamsSchema = z.object({
 const NotificationParamsSchema = z.object({
   webhookUrl: z.string().url().describe("URL where notifications should be sent"),
   events: z.array(z.enum([
-    "collection.created", "collection.completed", "collection.failed",
-    "search.created", "search.completed", "search.failed", 
-    "enhancement.created", "enhancement.completed", "enhancement.failed",
-    "webhook.created", "webhook.failed",
-    "item.created", "item.updated", "item.failed"
+    "webset.created", "webset.completed", "webset.failed",
+    "webset.search.created", "webset.search.completed", "webset.search.failed", 
+    "webset.enrichment.created", "webset.enrichment.completed", "webset.enrichment.failed",
+    "webset.item.created", "webset.item.enriched", "webset.item.failed",
+    "webhook.created", "webhook.failed"
   ])).describe("Which events you want to be notified about"),
   
   advanced: z.object({
@@ -145,7 +149,7 @@ toolRegistry["websets_manager"] = {
   category: ToolCategory.WEBSETS,
   service: ServiceType.WEBSETS,
   handler: async (args) => {
-    const { operation, resourceId, collection, search, enhancement, notification, update, query } = args;
+    const { operation, resourceId, collection, search, enhancement, notification, update, query: params } = args;
     
     const requestId = `websets_manager-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
     const logger = createRequestLogger(requestId, 'websets_manager');
@@ -167,7 +171,7 @@ toolRegistry["websets_manager"] = {
           return await handleCreateCollection(services, collection, logger);
         
         case "list_collections":
-          return await handleListCollections(services, query, logger);
+          return await handleListCollections(services, params, logger);
           
         case "get_collection_status":
           return await handleGetCollectionStatus(services, resourceId, logger);
@@ -206,7 +210,7 @@ toolRegistry["websets_manager"] = {
           return await handleSetupNotifications(services, notification, logger);
           
         case "list_notifications":
-          return await handleListNotifications(services, query, logger);
+          return await handleListNotifications(services, params, logger);
           
         case "get_notification_details":
           return await handleGetNotificationDetails(services, resourceId, logger);
@@ -215,13 +219,13 @@ toolRegistry["websets_manager"] = {
           return await handleRemoveNotifications(services, resourceId, logger);
           
         case "list_activities":
-          return await handleListActivities(services, query, logger);
+          return await handleListActivities(services, params, logger);
           
         case "get_activity_details":
           return await handleGetActivityDetails(services, resourceId, logger);
           
         case "list_content_items":
-          return await handleListContentItems(services, resourceId, query, logger);
+          return await handleListContentItems(services, resourceId, params, logger);
           
         default:
           throw new Error(`Unknown operation: ${operation}`);
@@ -230,7 +234,18 @@ toolRegistry["websets_manager"] = {
     } catch (error) {
       logger.error(error);
       
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      let errorMessage: string;
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'object' && error !== null) {
+        // Try to extract meaningful information from the error object
+        errorMessage = JSON.stringify(error, null, 2);
+      } else if (error === undefined) {
+        errorMessage = 'An unknown error occurred';
+      } else {
+        errorMessage = String(error);
+      }
+      
       logger.log(`Operation failed: ${errorMessage}`);
       
       return {
@@ -305,10 +320,10 @@ async function handleCreateCollection(services: any, params: any, logger: any) {
 
 async function handleListCollections(services: any, params: any, logger: any) {
   logger.log("Listing all collections");
-  const result = await services.websetService.listWebsets({
-    limit: params?.limit || 25,
-    offset: params?.offset || 0
-  });
+  const result = await services.websetService.listWebsets(
+    undefined, // cursor not supported yet
+    params?.limit || 25
+  );
   
   return {
     content: [{
@@ -397,6 +412,9 @@ async function handleSearchCollection(services: any, resourceId: string | undefi
   logger.log(`Searching collection ${resourceId} for: "${params.query}"`);
   const result = await services.searchService.createSearch(request);
   
+  // Store the mapping for later retrieval
+  searchToWebsetMap.set(result.id, resourceId);
+  
   return {
     content: [{
       type: "text" as const,
@@ -445,8 +463,19 @@ async function handleUpdateCollection(services: any, resourceId: string | undefi
   }
   
   const updateData: any = {};
-  if (params?.description) updateData.description = params.description;
-  if (params?.tags) updateData.metadata = params.tags;
+  
+  // The API only accepts metadata for updates
+  if (params?.tags) {
+    updateData.metadata = params.tags;
+  }
+  
+  // If description is provided, we can store it in metadata
+  if (params?.description) {
+    if (!updateData.metadata) {
+      updateData.metadata = {};
+    }
+    updateData.metadata.description = params.description;
+  }
   
   if (Object.keys(updateData).length === 0) {
     throw new Error("At least one field (description or tags) must be provided for update");
@@ -462,7 +491,7 @@ async function handleUpdateCollection(services: any, resourceId: string | undefi
         success: true,
         message: "Collection updated successfully",
         collectionId: resourceId,
-        updatedFields: Object.keys(updateData)
+        updatedMetadata: updateData.metadata
       }, null, 2)
     }]
   };
@@ -514,8 +543,14 @@ async function handleGetSearchResults(services: any, resourceId: string | undefi
     throw new Error("resourceId is required to get search results");
   }
   
-  logger.log(`Getting search results: ${resourceId}`);
-  const result = await services.searchService.getSearch(resourceId);
+  // Get the websetId from our mapping
+  const websetId = searchToWebsetMap.get(resourceId);
+  if (!websetId) {
+    throw new Error(`No webset found for search ${resourceId}. The search may have been created in a previous session.`);
+  }
+  
+  logger.log(`Getting search results: ${resourceId} from webset: ${websetId}`);
+  const result = await services.searchService.getSearch(websetId, resourceId);
   
   return {
     content: [{
@@ -525,7 +560,7 @@ async function handleGetSearchResults(services: any, resourceId: string | undefi
         searchId: resourceId,
         status: result.status,
         query: result.query,
-        collectionId: result.websetId,
+        collectionId: websetId,
         resultCount: result.count,
         createdAt: result.createdAt,
         ...(result.status === "completed" && result.results && {
@@ -541,20 +576,110 @@ async function handleCancelSearch(services: any, resourceId: string | undefined,
     throw new Error("resourceId is required to cancel a search");
   }
   
-  logger.log(`Cancelling search: ${resourceId}`);
-  const result = await services.searchService.cancelSearch(resourceId);
+  logger.log(`Attempting to cancel search: ${resourceId}`);
+  logger.log(`Current search mappings: ${JSON.stringify(Array.from(searchToWebsetMap.entries()))}`);
   
-  return {
-    content: [{
-      type: "text" as const,
-      text: JSON.stringify({
-        success: true,
-        message: "Search cancelled",
-        searchId: resourceId,
-        status: result.status
-      }, null, 2)
-    }]
-  };
+  // Get the websetId from our mapping first
+  let websetId = searchToWebsetMap.get(resourceId);
+  
+  // If not found in mapping, try to find it by searching through websets
+  if (!websetId) {
+    logger.log(`Search ${resourceId} not found in mapping, searching through all websets...`);
+    
+    try {
+      // Get list of websets and search through them
+      const websetsResponse = await services.websetService.listWebsets(undefined, 100);
+      const websets = websetsResponse.data || [];
+      
+      for (const webset of websets) {
+        try {
+          // Try to get the search from this webset
+          await services.searchService.getSearch(webset.id, resourceId);
+          websetId = webset.id;
+          logger.log(`Found search ${resourceId} in webset ${websetId}`);
+          break;
+        } catch (error) {
+          // Search not found in this webset, continue
+          continue;
+        }
+      }
+      
+      if (!websetId) {
+        throw new Error(`Search ${resourceId} not found in any webset. The search may not exist or may have been deleted.`);
+      }
+      
+    } catch (error) {
+      throw new Error(`Failed to locate search ${resourceId}: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+  
+  logger.log(`Cancelling search: ${resourceId} from webset: ${websetId}`);
+  
+  try {
+    // First, let's check if the search still exists and is cancellable
+    const searchStatus = await services.searchService.getSearch(websetId, resourceId);
+    logger.log(`Search ${resourceId} current status: ${searchStatus.status}`);
+    
+    if (searchStatus.status === 'completed' || searchStatus.status === 'canceled') {
+      return {
+        content: [{
+          type: "text" as const,
+          text: JSON.stringify({
+            success: false,
+            message: `Search cannot be cancelled because it is already ${searchStatus.status}`,
+            searchId: resourceId,
+            websetId: websetId,
+            status: searchStatus.status
+          }, null, 2)
+        }]
+      };
+    }
+    
+    const result = await services.searchService.cancelSearch(websetId, resourceId);
+    
+    // Remove from mapping after cancellation
+    searchToWebsetMap.delete(resourceId);
+    
+    return {
+      content: [{
+        type: "text" as const,
+        text: JSON.stringify({
+          success: true,
+          message: "Search cancelled successfully",
+          searchId: resourceId,
+          websetId: websetId,
+          status: result.status,
+          cancelledAt: result.canceledAt
+        }, null, 2)
+      }]
+    };
+    
+  } catch (error: any) {
+    logger.log(`Error during search cancellation: ${error}`);
+    
+    // Check for specific error types
+    if (error?.response?.status === 400) {
+      return {
+        content: [{
+          type: "text" as const,
+          text: JSON.stringify({
+            success: false,
+            message: "Cannot cancel search",
+            error: error?.response?.data?.message || "Search may have already completed or been cancelled",
+            searchId: resourceId,
+            websetId: websetId,
+            suggestions: [
+              "Check search status with get_search_results",
+              "Searches complete quickly and may finish before cancellation",
+              "Only 'running' searches can be cancelled"
+            ]
+          }, null, 2)
+        }]
+      };
+    }
+    
+    throw new Error(`Failed to cancel search ${resourceId}: ${error instanceof Error ? error.message : String(error)}`);
+  }
 }
 
 async function handleEnhanceContent(services: any, resourceId: string | undefined, params: any, logger: any) {
@@ -568,13 +693,16 @@ async function handleEnhanceContent(services: any, resourceId: string | undefine
   const request = {
     websetId: resourceId,
     description: params.task,
-    ...(params.advanced?.outputFormat && { format: params.advanced.outputFormat }),
+    format: params.advanced?.outputFormat || "text", // format is required, default to "text"
     ...(params.advanced?.choices && { options: params.advanced.choices }),
     ...(params.advanced?.tags && { metadata: params.advanced.tags })
   };
   
   logger.log(`Creating enhancement for collection ${resourceId}: "${params.task}"`);
   const result = await services.enrichmentService.createEnrichment(request);
+  
+  // Store the mapping for later retrieval
+  enrichmentToWebsetMap.set(result.id, resourceId);
   
   return {
     content: [{
@@ -599,8 +727,14 @@ async function handleGetEnhancementResults(services: any, resourceId: string | u
     throw new Error("resourceId is required to get enhancement results");
   }
   
-  logger.log(`Getting enhancement results: ${resourceId}`);
-  const result = await services.enrichmentService.getEnrichment(resourceId);
+  // Get the websetId from our mapping
+  const websetId = enrichmentToWebsetMap.get(resourceId);
+  if (!websetId) {
+    throw new Error(`No webset found for enhancement ${resourceId}. The enhancement may have been created in a previous session.`);
+  }
+  
+  logger.log(`Getting enhancement results: ${resourceId} from webset: ${websetId}`);
+  const result = await services.enrichmentService.getEnrichment(websetId, resourceId);
   
   return {
     content: [{
@@ -610,7 +744,7 @@ async function handleGetEnhancementResults(services: any, resourceId: string | u
         enhancementId: resourceId,
         status: result.status,
         task: result.description,
-        collectionId: result.websetId,
+        collectionId: websetId,
         createdAt: result.createdAt,
         ...(result.status === "completed" && result.results && {
           results: result.results
@@ -625,8 +759,17 @@ async function handleDeleteEnhancement(services: any, resourceId: string | undef
     throw new Error("resourceId is required to delete an enhancement");
   }
   
-  logger.log(`Deleting enhancement: ${resourceId}`);
-  await services.enrichmentService.deleteEnrichment(resourceId);
+  // Get the websetId from our mapping
+  const websetId = enrichmentToWebsetMap.get(resourceId);
+  if (!websetId) {
+    throw new Error(`No webset found for enhancement ${resourceId}. The enhancement may have been created in a previous session.`);
+  }
+  
+  logger.log(`Deleting enhancement: ${resourceId} from webset: ${websetId}`);
+  await services.enrichmentService.deleteEnrichment(websetId, resourceId);
+  
+  // Remove from mapping after deletion
+  enrichmentToWebsetMap.delete(resourceId);
   
   return {
     content: [{
@@ -645,8 +788,17 @@ async function handleCancelEnhancement(services: any, resourceId: string | undef
     throw new Error("resourceId is required to cancel an enhancement");
   }
   
-  logger.log(`Cancelling enhancement: ${resourceId}`);
-  const result = await services.enrichmentService.cancelEnrichment(resourceId);
+  // Get the websetId from our mapping
+  const websetId = enrichmentToWebsetMap.get(resourceId);
+  if (!websetId) {
+    throw new Error(`No webset found for enhancement ${resourceId}. The enhancement may have been created in a previous session.`);
+  }
+  
+  logger.log(`Cancelling enhancement: ${resourceId} from webset: ${websetId}`);
+  const result = await services.enrichmentService.cancelEnrichment(websetId, resourceId);
+  
+  // Remove from mapping after cancellation
+  enrichmentToWebsetMap.delete(resourceId);
   
   return {
     content: [{
@@ -697,7 +849,7 @@ async function handleListNotifications(services: any, params: any, logger: any) 
   logger.log("Listing all notifications");
   const result = await services.webhookService.listWebhooks({
     limit: params?.limit || 25,
-    offset: params?.offset || 0
+    cursor: undefined // cursor-based pagination, no offset
   });
   
   return {
@@ -762,28 +914,64 @@ async function handleRemoveNotifications(services: any, resourceId: string | und
 
 async function handleListActivities(services: any, params: any, logger: any) {
   logger.log("Listing recent activities");
-  const result = await services.eventService.listEvents({
-    limit: params?.limit || 25,
-    offset: params?.offset || 0
-  });
   
-  return {
-    content: [{
-      type: "text" as const,
-      text: JSON.stringify({
-        success: true,
-        message: `Found ${result.data.length} recent activities`,
-        activities: result.data.map((event: any) => ({
-          id: event.id,
-          type: event.type,
-          resourceId: event.resourceId,
-          status: event.status,
-          createdAt: event.createdAt,
-          description: event.description || "No description"
-        }))
-      }, null, 2)
-    }]
-  };
+  try {
+    const result = await services.eventService.listEvents({
+      limit: params?.limit || 25,
+      cursor: params?.cursor
+    });
+    
+    logger.log(`Event service response structure: ${JSON.stringify(Object.keys(result))}`);
+    
+    // EventService returns events in the 'events' field or 'data' field
+    const events = result.events || result.data || [];
+    
+    logger.log(`Found ${events.length} events`);
+    
+    return {
+      content: [{
+        type: "text" as const,
+        text: JSON.stringify({
+          success: true,
+          message: `Found ${events.length} recent activities`,
+          total: events.length,
+          nextCursor: result.nextCursor,
+          activities: events.map((event: any) => ({
+            id: event.id,
+            type: event.type,
+            timestamp: event.createdAt,
+            object: event.object,
+            summary: `${event.type} event occurred`,
+            ...(event.data && { data: event.data })
+          }))
+        }, null, 2)
+      }]
+    };
+    
+  } catch (error: any) {
+    logger.log(`Error listing activities: ${error}`);
+    
+    // Check if this is a 500 error from the events API
+    if (error?.code === 'network_error' || error?.response?.status === 500) {
+      return {
+        content: [{
+          type: "text" as const,
+          text: JSON.stringify({
+            success: false,
+            message: "Events API is currently unavailable",
+            error: "The events endpoint is returning a server error (500). This feature may not be available yet.",
+            alternatives: [
+              "Use webhooks to receive event notifications",
+              "Monitor webset status through get_collection_status",
+              "Check search progress with get_search_results"
+            ]
+          }, null, 2)
+        }]
+      };
+    }
+    
+    throw new Error(`Failed to list activities: ${error instanceof Error ? error.message : String(error)}`);
+  }
 }
 
 async function handleGetActivityDetails(services: any, resourceId: string | undefined, logger: any) {
@@ -792,23 +980,77 @@ async function handleGetActivityDetails(services: any, resourceId: string | unde
   }
   
   logger.log(`Getting activity details: ${resourceId}`);
-  const result = await services.eventService.getEvent(resourceId);
   
-  return {
-    content: [{
-      type: "text" as const,
-      text: JSON.stringify({
-        success: true,
-        activityId: resourceId,
-        type: result.type,
-        status: result.status,
-        resourceId: result.resourceId,
-        createdAt: result.createdAt,
-        details: result.data || {},
-        description: result.description || "No description"
-      }, null, 2)
-    }]
-  };
+  try {
+    const result = await services.eventService.getEvent(resourceId);
+    
+    logger.log(`Activity details retrieved: ${JSON.stringify(result, null, 2)}`);
+    
+    return {
+      content: [{
+        type: "text" as const,
+        text: JSON.stringify({
+          success: true,
+          activityId: resourceId,
+          type: result.type,
+          object: result.object,
+          createdAt: result.createdAt,
+          eventData: result.data || {},
+          // Extract relevant info from the event data
+          ...(result.data && {
+            resourceInfo: {
+              id: result.data.id,
+              status: result.data.status
+            }
+          })
+        }, null, 2)
+      }]
+    };
+    
+  } catch (error: any) {
+    logger.log(`Error getting activity details: ${error}`);
+    
+    // Check if this is a 500 error from the events API
+    if (error?.code === 'network_error' || error?.response?.status === 500) {
+      return {
+        content: [{
+          type: "text" as const,
+          text: JSON.stringify({
+            success: false,
+            message: "Events API is currently unavailable",
+            error: "The events endpoint is returning a server error (500). This feature may not be available yet.",
+            eventId: resourceId,
+            alternatives: [
+              "Use webhooks to receive event notifications",
+              "Events are automatically sent to configured webhooks",
+              "Check the webhook URL for event details"
+            ]
+          }, null, 2)
+        }]
+      };
+    }
+    
+    // Check if this is a 404 error (event not found)
+    if (error?.response?.status === 404) {
+      return {
+        content: [{
+          type: "text" as const,
+          text: JSON.stringify({
+            success: false,
+            message: "Event not found",
+            error: `No event found with ID: ${resourceId}`,
+            suggestions: [
+              "Verify the event ID is correct",
+              "Events may expire after a certain time",
+              "Use list_activities to see available events"
+            ]
+          }, null, 2)
+        }]
+      };
+    }
+    
+    throw new Error(`Failed to get activity details for ${resourceId}: ${error instanceof Error ? error.message : String(error)}`);
+  }
 }
 
 async function handleListContentItems(services: any, resourceId: string | undefined, params: any, logger: any) {
@@ -817,10 +1059,11 @@ async function handleListContentItems(services: any, resourceId: string | undefi
   }
   
   logger.log(`Listing content items for collection: ${resourceId}`);
-  const result = await services.itemService.listItems(resourceId, {
-    limit: params?.limit || 25,
-    offset: params?.offset || 0
-  });
+  const result = await services.itemService.listItems(
+    resourceId,
+    undefined, // cursor not supported yet
+    params?.limit || 25
+  );
   
   return {
     content: [{

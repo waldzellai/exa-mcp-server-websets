@@ -5,4 +5,34 @@ tests/
 .npmignore
 tsconfig.json
 *.log
-.env* 
+.env*
+
+# Test coverage
+coverage/
+test-results/
+jest.config.js
+
+# Test files
+test-*.js
+
+# Development files
+CLAUDE.md
+INTEGRATION.md
+Dockerfile
+smithery.yaml
+
+# Reference documentation files (parent directory)
+../*-spec.md
+../*_summary.md
+../*_test_results.md
+../*_test_report.md
+
+# Parent directory test files
+../comprehensive_websets_manager_test.js
+../*.js
+
+# OpenAPI and type files
+../websets-openapi.ts
+
+# Exclude llms.txt
+../llms.txt 
