@@ -50,7 +50,7 @@ export class WebsetsApiClient {
       (config) => {
         try {
           const token = this.tokenProvider.getToken();
-          config.headers['Authorization'] = `Bearer ${token}`;
+          config.headers['x-api-key'] = token;
         } catch (error) {
           log.error('Failed to get API token', error);
           throw error;
