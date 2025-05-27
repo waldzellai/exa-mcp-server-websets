@@ -1,14 +1,14 @@
 {
-  "name": "exa-mcp-server",
-  "version": "0.3.10",
-  "description": "A Model Context Protocol server with Exa for web search, academic paper search, and Twitter/X.com search. Provides real-time web searches with configurable tool selection, allowing users to enable or disable specific search capabilities. Supports customizable result counts, live crawling options, and returns content from the most relevant websites.",
+  "name": "exa-websets-mcp-server",
+  "version": "1.0.0",
+  "description": "A Model Context Protocol server for Exa AI's websets management and web search capabilities. Provides comprehensive websets collection management, real-time web searching, and helpful guidance through a simplified interface.",
   "type": "module",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/exa-labs/exa-mcp-server.git"
+    "url": "git+https://github.com/exa-labs/exa-websets-mcp-server.git"
   },
   "bin": {
-    "exa-mcp-server": "./build/index.js"
+    "exa-websets-mcp-server": "./build/index.js"
   },
   "files": [
     "build"
@@ -17,12 +17,12 @@
     "mcp",
     "model context protocol",
     "exa",
+    "websets",
     "websearch",
     "claude",
     "ai",
-    "research",
-    "papers",
-    "linkedin"
+    "collections",
+    "content management"
   ],
   "author": "Exa Labs",
   "scripts": {
@@ -39,14 +39,12 @@
     "@modelcontextprotocol/sdk": "^1.12.0",
     "axios": "^1.7.8",
     "dotenv": "^16.5.0",
-    "yargs": "^17.7.2",
     "zod": "^3.22.4"
   },
   "devDependencies": {
     "@jest/globals": "^29.7.0",
     "@types/jest": "^29.5.14",
     "@types/node": "^20.11.24",
-    "@types/yargs": "^17.0.33",
     "jest": "^29.7.0",
     "jest-junit": "^16.0.0",
     "ts-jest": "^29.3.4",
