@@ -221,6 +221,18 @@ npx exa-websets-mcp-server
    * Use webhooks for event notifications instead
    * Monitor webset status through get_collection_status
 
+## Changelog
+
+### v1.0.1 (2025-05-27)
+- Fixed authentication header from 'Authorization: Bearer' to 'x-api-key'
+- Resolved network errors in websets operations
+- All tools now work correctly with Smithery deployment
+
+### v1.0.0 (2025-05-27)
+- Initial release with simplified architecture
+- Three essential tools: websets_manager, web_search_exa, websets_guide
+- 100% operational coverage for all websets operations
+
 ---
 
 Built with ❤️ by team Exa
