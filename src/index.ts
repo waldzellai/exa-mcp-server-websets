@@ -2,94 +2,25 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import dotenv from "dotenv";
-import yargs from 'yargs';
-import { hideBin } from 'yargs/helpers';
+// Removed yargs - no longer needed for tool selection
 
-// Import the tool registry system
-import { toolRegistry, ToolFactory, ToolCategory, ServiceType } from "./tools/index.js";
+// Import only the tools we need
+import websetsGuideTool from "./tools/websetsGuide.js";
 import { log } from "./utils/logger.js";
+import { toolRegistry } from "./tools/config.js";
+
+// Import tools to register them
+import "./tools/webSearch.js";
+import "./tools/websetsManager.js";
 
 dotenv.config();
 
-// Parse command line arguments to determine which tools to enable
-const argv = yargs(hideBin(process.argv))
-  .option('tools', {
-    type: 'string',
-    description: 'Comma-separated list of tools or categories to enable. Categories: search, websets, unified. Use "unified" for simplified websets experience. If not specified, defaults to search + unified.',
-    default: ''
-  })
-  .option('list-tools', {
-    type: 'boolean',
-    description: 'List all available tools and exit',
-    default: false
-  })
-  .help()
-  .argv;
-
-// Convert comma-separated string to Set for easier lookups
-const argvObj = argv as any;
-const toolsString = argvObj['tools'] || '';
-const specifiedTools = new Set<string>(
-  toolsString ? toolsString.split(',').map((tool: string) => tool.trim()) : []
-);
-
-// Define tool categories for easier selection
-const TOOL_CATEGORIES = {
-  search: ['web_search_exa', 'research_paper_search', 'company_research', 'crawling', 'competitor_finder', 'linkedin_search', 'wikipedia_search_exa', 'github_search'],
-  websets: Object.keys(toolRegistry).filter(key => toolRegistry[key].category === ToolCategory.WEBSETS && !['websets_manager', 'websets_guide'].includes(key)),
-  unified: ['websets_manager', 'websets_guide'], // The simplified tools
-  all: Object.keys(toolRegistry)
+// Create our simplified tool registry with three tools
+const simplifiedRegistry = {
+  web_search_exa: toolRegistry["web_search_exa"],
+  websets_manager: toolRegistry["websets_manager"], 
+  websets_guide: websetsGuideTool
 };
-
-// Expand categories into individual tool names
-function expandToolSelection(selection: Set<string>): Set<string> {
-  const expanded = new Set<string>();
-  
-  selection.forEach(item => {
-    if (TOOL_CATEGORIES[item as keyof typeof TOOL_CATEGORIES]) {
-      // It's a category, add all tools in that category
-      TOOL_CATEGORIES[item as keyof typeof TOOL_CATEGORIES].forEach(tool => expanded.add(tool));
-    } else {
-      // It's an individual tool name
-      expanded.add(item);
-    }
-  });
-  
-  return expanded;
-}
-
-// Apply category expansion
-const expandedTools = expandToolSelection(specifiedTools);
-
-// List all available tools if requested
-if (argvObj['list-tools']) {
-  console.log("Available tool categories:");
-  console.log("- search: All search tools (web search, research papers, GitHub, etc.)");
-  console.log("- unified: Simplified websets manager + guide (RECOMMENDED)");
-  console.log("- websets: Individual websets tools (legacy, complex)");
-  console.log("- all: Every available tool");
-  console.log();
-  
-  console.log("Individual tools:");
-  
-  Object.entries(toolRegistry).forEach(([id, tool]) => {
-    const category = tool.category || 'uncategorized';
-    console.log(`- ${id}: ${tool.name} (${category})`);
-    console.log(`  Description: ${tool.description}`);
-    console.log(`  Enabled by default: ${tool.enabled ? 'Yes' : 'No'}`);
-    console.log();
-  });
-  
-  console.log("Usage examples:");
-  console.log("  --tools=unified           # Simplified manager + guide (recommended)");
-  console.log("  --tools=search,unified    # Search tools + simplified websets");
-  console.log("  --tools=search            # Only search tools"); 
-  console.log("  --tools=websets           # All individual websets tools (complex)");
-  console.log("  --tools=web_search_exa    # Only web search tool");
-  console.log("  --tools=websets_guide     # Just the helpful guide tool");
-  
-  process.exit(0);
-}
 
 // Check for API key after handling list-tools to allow listing without a key
 const API_KEY = process.env.EXA_API_KEY;
@@ -98,16 +29,15 @@ if (!API_KEY) {
 }
 
 /**
- * Exa AI Web Search MCP Server
+ * Exa AI Websets MCP Server
  * 
- * This MCP server integrates Exa AI's search capabilities with Claude and other MCP-compatible clients.
- * Exa is a search engine and API specifically designed for up-to-date web searching and retrieval,
- * offering more recent and comprehensive results than what might be available in an LLM's training data.
+ * This MCP server provides Exa AI's websets management capabilities and basic web search
+ * functionality to AI assistants through the Model Context Protocol.
  * 
- * The server provides tools that enable:
- * - Real-time web searching with configurable parameters
- * - Research paper searches
- * - And more to come!
+ * The server provides three essential tools:
+ * - websets_manager: Comprehensive websets collection management
+ * - web_search_exa: Real-time web searching capabilities
+ * - websets_guide: Helpful guidance for using websets
  */
 
 class ExaServer {
@@ -116,36 +46,29 @@ class ExaServer {
 
   constructor() {
     this.server = new McpServer({
-      name: "exa-search-server",
-      version: "0.3.10"
+      name: "exa-websets-server",
+      version: "1.0.0"
     });
     
     log("Server initialized");
   }
 
   private setupTools(): string[] {
-    // Register tools based on specifications
+    // Register our two tools
     const registeredTools: string[] = [];
     
-    Object.entries(toolRegistry).forEach(([toolId, tool]) => {
-      let shouldRegister = false;
-      
-      if (expandedTools.size > 0) {
-        // Specific tools/categories were provided
-        shouldRegister = expandedTools.has(toolId);
-      } else {
-        // No specific tools provided - use default selection
-        // Default: search tools + unified websets manager (simplified experience)
-        const defaultTools = new Set([...TOOL_CATEGORIES.search, ...TOOL_CATEGORIES.unified]);
-        shouldRegister = defaultTools.has(toolId);
-      }
-      
-      if (shouldRegister) {
+    Object.entries(simplifiedRegistry).forEach(([toolId, tool]) => {
+      if (tool) {
+        // Handle both formats - websetsGuide uses inputSchema/execute
+        // while tools from registry use schema/handler
+        const schema = (tool as any).inputSchema || tool.schema;
+        const handler = (tool as any).execute || tool.handler;
+        
         this.server.tool(
           tool.name,
           tool.description,
-          tool.schema,
-          tool.handler
+          schema,
+          handler
         );
         registeredTools.push(toolId);
       }
@@ -169,7 +92,7 @@ class ExaServer {
       };
       
       await this.server.connect(transport);
-      log("Exa Search MCP server running on stdio");
+      log("Exa Websets MCP server running on stdio");
       
       // Set up keep-alive to prevent timeout
       this.setupKeepAlive();

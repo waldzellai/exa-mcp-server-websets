@@ -55,7 +55,7 @@ export class WebsetService extends BaseService {
     const endpoint = this.buildEndpoint('/websets/{websetId}', { websetId });
     const sanitizedRequest = this.sanitizeParams(request);
     
-    return this.handlePatchRequest<Webset>(endpoint, sanitizedRequest);
+    return this.handlePostRequest<Webset>(endpoint, sanitizedRequest);
   }
 
   /**
