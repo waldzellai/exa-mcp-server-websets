@@ -654,8 +654,30 @@ async function handleCancelSearch(services: any, resourceId: string | undefined,
       }]
     };
     
-  } catch (error) {
+  } catch (error: any) {
     logger.log(`Error during search cancellation: ${error}`);
+    
+    // Check for specific error types
+    if (error?.response?.status === 400) {
+      return {
+        content: [{
+          type: "text" as const,
+          text: JSON.stringify({
+            success: false,
+            message: "Cannot cancel search",
+            error: error?.response?.data?.message || "Search may have already completed or been cancelled",
+            searchId: resourceId,
+            websetId: websetId,
+            suggestions: [
+              "Check search status with get_search_results",
+              "Searches complete quickly and may finish before cancellation",
+              "Only 'running' searches can be cancelled"
+            ]
+          }, null, 2)
+        }]
+      };
+    }
+    
     throw new Error(`Failed to cancel search ${resourceId}: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
@@ -926,8 +948,28 @@ async function handleListActivities(services: any, params: any, logger: any) {
       }]
     };
     
-  } catch (error) {
+  } catch (error: any) {
     logger.log(`Error listing activities: ${error}`);
+    
+    // Check if this is a 500 error from the events API
+    if (error?.code === 'network_error' || error?.response?.status === 500) {
+      return {
+        content: [{
+          type: "text" as const,
+          text: JSON.stringify({
+            success: false,
+            message: "Events API is currently unavailable",
+            error: "The events endpoint is returning a server error (500). This feature may not be available yet.",
+            alternatives: [
+              "Use webhooks to receive event notifications",
+              "Monitor webset status through get_collection_status",
+              "Check search progress with get_search_results"
+            ]
+          }, null, 2)
+        }]
+      };
+    }
+    
     throw new Error(`Failed to list activities: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
@@ -965,8 +1007,48 @@ async function handleGetActivityDetails(services: any, resourceId: string | unde
       }]
     };
     
-  } catch (error) {
+  } catch (error: any) {
     logger.log(`Error getting activity details: ${error}`);
+    
+    // Check if this is a 500 error from the events API
+    if (error?.code === 'network_error' || error?.response?.status === 500) {
+      return {
+        content: [{
+          type: "text" as const,
+          text: JSON.stringify({
+            success: false,
+            message: "Events API is currently unavailable",
+            error: "The events endpoint is returning a server error (500). This feature may not be available yet.",
+            eventId: resourceId,
+            alternatives: [
+              "Use webhooks to receive event notifications",
+              "Events are automatically sent to configured webhooks",
+              "Check the webhook URL for event details"
+            ]
+          }, null, 2)
+        }]
+      };
+    }
+    
+    // Check if this is a 404 error (event not found)
+    if (error?.response?.status === 404) {
+      return {
+        content: [{
+          type: "text" as const,
+          text: JSON.stringify({
+            success: false,
+            message: "Event not found",
+            error: `No event found with ID: ${resourceId}`,
+            suggestions: [
+              "Verify the event ID is correct",
+              "Events may expire after a certain time",
+              "Use list_activities to see available events"
+            ]
+          }, null, 2)
+        }]
+      };
+    }
+    
     throw new Error(`Failed to get activity details for ${resourceId}: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
