@@ -950,25 +950,60 @@ async function handleListActivities(services: any, params: any, logger: any) {
   } catch (error: any) {
     logger.log(`Error listing activities: ${error}`);
     
-    // Check if this is a 500 error from the events API
-    if (error?.code === 'network_error' || error?.response?.status === 500) {
+    // Enhanced error detection for Events API unavailability
+    const isEventsApiUnavailable = (
+      error?.response?.status === 500 ||
+      error?.response?.status === 501 ||
+      error?.response?.status === 502 ||
+      error?.response?.status === 503 ||
+      error?.code === 'ECONNREFUSED' ||
+      error?.code === 'network_error' ||
+      (error?.message && error.message.toLowerCase().includes('events api')) ||
+      (error?.response?.data?.message && error.response.data.message.toLowerCase().includes('unavailable'))
+    );
+    
+    if (isEventsApiUnavailable) {
       return {
         content: [{
           type: "text" as const,
           text: JSON.stringify({
             success: false,
             message: "Events API is currently unavailable",
-            error: "The events endpoint is returning a server error (500). This feature may not be available yet.",
+            error: "The /v0/events endpoint is not yet implemented or is temporarily unavailable (HTTP 500). This is a known limitation.",
+            details: {
+              endpoint: "/v0/events",
+              expectedStatus: "The Events API is defined in the OpenAPI specification but not yet implemented on the server",
+              httpStatus: error?.response?.status || "Network Error"
+            },
             alternatives: [
-              "Use webhooks to receive event notifications",
-              "Monitor webset status through get_collection_status",
-              "Check search progress with get_search_results"
+              {
+                action: "setup_notifications",
+                description: "Configure webhooks to receive real-time event notifications instead of polling"
+              },
+              {
+                action: "get_collection_status", 
+                description: "Monitor individual webset status and progress directly"
+              },
+              {
+                action: "get_search_results",
+                description: "Check search completion status and results"
+              },
+              {
+                action: "list_collections",
+                description: "List all collections to see their current states"
+              }
+            ],
+            recommendations: [
+              "Consider setting up webhooks for event-driven workflows",
+              "Use collection status monitoring for progress tracking",
+              "Check back later as the Events API may be implemented in future updates"
             ]
           }, null, 2)
         }]
       };
     }
     
+    // For other errors, provide generic error handling
     throw new Error(`Failed to list activities: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
@@ -1009,20 +1044,50 @@ async function handleGetActivityDetails(services: any, resourceId: string | unde
   } catch (error: any) {
     logger.log(`Error getting activity details: ${error}`);
     
-    // Check if this is a 500 error from the events API
-    if (error?.code === 'network_error' || error?.response?.status === 500) {
+    // Enhanced error detection for Events API unavailability
+    const isEventsApiUnavailable = (
+      error?.response?.status === 500 ||
+      error?.response?.status === 501 ||
+      error?.response?.status === 502 ||
+      error?.response?.status === 503 ||
+      error?.code === 'ECONNREFUSED' ||
+      error?.code === 'network_error' ||
+      (error?.message && error.message.toLowerCase().includes('events api')) ||
+      (error?.response?.data?.message && error.response.data.message.toLowerCase().includes('unavailable'))
+    );
+    
+    if (isEventsApiUnavailable) {
       return {
         content: [{
           type: "text" as const,
           text: JSON.stringify({
             success: false,
-            message: "Events API is currently unavailable",
-            error: "The events endpoint is returning a server error (500). This feature may not be available yet.",
-            eventId: resourceId,
+            message: "Events API is currently unavailable", 
+            error: "The /v0/events endpoint is not yet implemented or is temporarily unavailable (HTTP 500). This is a known limitation.",
+            details: {
+              endpoint: `/v0/events/${resourceId}`,
+              expectedStatus: "The Events API is defined in the OpenAPI specification but not yet implemented on the server",
+              httpStatus: error?.response?.status || "Network Error",
+              eventId: resourceId
+            },
             alternatives: [
-              "Use webhooks to receive event notifications",
-              "Events are automatically sent to configured webhooks",
-              "Check the webhook URL for event details"
+              {
+                action: "setup_notifications",
+                description: "Configure webhooks to receive event notifications automatically"
+              },
+              {
+                action: "list_notifications", 
+                description: "Check if webhook notifications are already configured"
+              },
+              {
+                action: "get_collection_status",
+                description: "Monitor webset status changes for activity tracking" 
+              }
+            ],
+            recommendations: [
+              "Events are automatically sent to configured webhook URLs",
+              "Set up webhooks for real-time event notifications",
+              "Check webhook delivery logs for event details"
             ]
           }, null, 2)
         }]
@@ -1038,10 +1103,15 @@ async function handleGetActivityDetails(services: any, resourceId: string | unde
             success: false,
             message: "Event not found",
             error: `No event found with ID: ${resourceId}`,
+            details: {
+              eventId: resourceId,
+              httpStatus: 404
+            },
             suggestions: [
               "Verify the event ID is correct",
               "Events may expire after a certain time",
-              "Use list_activities to see available events"
+              "Use list_activities to see available events",
+              "Event IDs from webhook notifications may not be queryable via API"
             ]
           }, null, 2)
         }]
