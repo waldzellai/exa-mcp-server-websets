@@ -542,14 +542,67 @@ async function handleGetSearchResults(services: any, resourceId: string | undefi
     throw new Error("resourceId is required to get search results");
   }
   
-  // Get the websetId from our mapping
-  const websetId = searchToWebsetMap.get(resourceId);
+  logger.log(`Getting search results for search ID: ${resourceId}`);
+  
+  // Get the websetId from our mapping first
+  let websetId: string | undefined = searchToWebsetMap.get(resourceId);
+  
+  // If not found in mapping, try to find it by searching through websets
   if (!websetId) {
-    throw new Error(`No webset found for search ${resourceId}. The search may have been created in a previous session.`);
+    logger.log(`Search ${resourceId} not found in mapping, searching through all websets...`);
+    
+    try {
+      // Get list of websets and search through them
+      const websetsResponse = await services.websetService.listWebsets(undefined, 100);
+      const websets = websetsResponse.data || [];
+      
+      for (const webset of websets) {
+        try {
+          // Try to get the search from this webset
+          await services.searchService.getSearch(webset.id, resourceId);
+          websetId = webset.id;
+          logger.log(`Found search ${resourceId} in webset ${webset.id}`);
+          // Update our mapping for future use
+          searchToWebsetMap.set(resourceId, webset.id);
+          break;
+        } catch (error) {
+          // Search not found in this webset, continue
+          continue;
+        }
+      }
+      
+      if (!websetId) {
+        throw new Error(`Search ${resourceId} not found in any webset. The search may not exist or may have been deleted.`);
+      }
+      
+    } catch (error) {
+      throw new Error(`Failed to locate search ${resourceId}: ${error instanceof Error ? error.message : String(error)}`);
+    }
   }
   
-  logger.log(`Getting search results: ${resourceId} from webset: ${websetId}`);
-  const result = await services.searchService.getSearch(websetId, resourceId);
+  // At this point websetId is guaranteed to be defined
+  if (!websetId) {
+    throw new Error(`Unable to determine webset ID for search ${resourceId}`);
+  }
+  
+  // Get the search details
+  logger.log(`Getting search details: ${resourceId} from webset: ${websetId}`);
+  const searchResult = await services.searchService.getSearch(websetId, resourceId);
+  
+  // If the search is completed, get the actual search results (items)
+  let searchResultsItems = null;
+  if (searchResult.status === "completed") {
+    try {
+      logger.log(`Search completed, retrieving result items from webset: ${websetId}`);
+      // Get items that were found by this specific search
+      const itemsResponse = await services.itemService.getItemsBySearchId(websetId, resourceId);
+      searchResultsItems = itemsResponse;
+      logger.log(`Found ${itemsResponse.length} items for search ${resourceId}`);
+    } catch (error) {
+      logger.log(`Warning: Could not retrieve search result items: ${error instanceof Error ? error.message : String(error)}`);
+      // Don't fail the whole operation if we can't get items
+    }
+  }
   
   return {
     content: [{
@@ -557,13 +610,39 @@ async function handleGetSearchResults(services: any, resourceId: string | undefi
       text: JSON.stringify({
         success: true,
         searchId: resourceId,
-        status: result.status,
-        query: result.query,
         collectionId: websetId,
-        resultCount: result.count,
-        createdAt: result.createdAt,
-        ...(result.status === "completed" && result.results && {
-          results: result.results
+        status: searchResult.status,
+        query: searchResult.query,
+        progress: {
+          found: searchResult.progress?.found || 0,
+          completion: searchResult.progress?.completion || 0
+        },
+        ...(searchResult.entity && { entityType: searchResult.entity.type }),
+        ...(searchResult.criteria && searchResult.criteria.length > 0 && { criteria: searchResult.criteria }),
+        createdAt: searchResult.createdAt,
+        updatedAt: searchResult.updatedAt,
+        ...(searchResult.status === "completed" && searchResultsItems && {
+          results: searchResultsItems.map((item: any) => ({
+            id: item.id,
+            title: item.title,
+            url: item.url,
+            snippet: item.content ? item.content.substring(0, 200) + "..." : "No content preview",
+            entityType: item.entity?.type,
+            verification: item.verification?.status,
+            createdAt: item.createdAt
+          })),
+          totalResults: searchResultsItems.length
+        }),
+        ...(searchResult.status === "running" && {
+          message: "Search is still running. Check back later for results."
+        }),
+        ...(searchResult.status === "created" && {
+          message: "Search has been created and will start processing soon."
+        }),
+        ...(searchResult.status === "canceled" && {
+          message: "Search was cancelled.",
+          canceledAt: searchResult.canceledAt,
+          canceledReason: searchResult.canceledReason
         })
       }, null, 2)
     }]
