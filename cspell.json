@@ -1,0 +1,31 @@
+{
+  "version": "0.2",
+  "language": "en",
+  "words": [
+    "webset",
+    "websets",
+    "Webset",
+    "Websets",
+    "WEBSETS",
+    "exa",
+    "Exa",
+    "EXA",
+    "mcp",
+    "MCP",
+    "axios",
+    "zod",
+    "dotenv",
+    "webhook",
+    "webhooks",
+    "enrichment",
+    "enrichments"
+  ],
+  "dictionaries": ["typescript", "node", "npm"],
+  "ignorePaths": [
+    "node_modules",
+    "build",
+    "coverage",
+    "*.log",
+    "*.json"
+  ]
+}
