@@ -19,14 +19,15 @@ export class SearchService extends BaseService {
   async createSearch(request: CreateSearchRequest): Promise<WebsetSearch> {
     this.validateRequired({ websetId: request.websetId, query: request.query }, ['websetId', 'query']);
     this.validateCreateSearchRequest(request);
-    this.logOperation('createSearch', { websetId: request.websetId, query: request.query });
+    this.logOperation('createSearch', { websetId: request.websetId, query: request.query, count: request.count });
     
     const endpoint = this.buildEndpoint('/websets/{websetId}/searches', { websetId: request.websetId });
     const sanitizedRequest = this.sanitizeParams({
+      behaviour: "override", // Required by API - default behavior to reuse existing items
       query: request.query,
       entity: request.entity,
       criteria: request.criteria,
-      count: request.count,
+      count: request.count || 10, // Default count if not provided
       metadata: request.metadata,
     });
     
