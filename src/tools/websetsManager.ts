@@ -335,9 +335,9 @@ async function handleListCollections(services: any, params: any, logger: any) {
           id: ws.id,
           status: ws.status,
           description: ws.description || "No description",
-          itemCount: ws.itemCount || 0,
+          itemCount: ws.searches?.[0]?.progress?.found || 0,
           createdAt: ws.createdAt,
-          searchQuery: ws.search?.query || "Unknown query"
+          searchQuery: ws.searches?.[0]?.query || "Unknown query"
         })),
         pagination: {
           limit: params?.limit || 25,
@@ -376,8 +376,8 @@ async function handleGetCollectionStatus(services: any, resourceId: string | und
         details: {
           createdAt: result.createdAt,
           updatedAt: result.updatedAt,
-          itemCount: result.itemCount || 0,
-          searchQuery: result.search?.query,
+          itemCount: result.searches?.[0]?.progress?.found || 0,
+          searchQuery: result.searches?.[0]?.query,
           ...(result.error && { error: result.error })
         },
         ...(result.status === "completed" && {
