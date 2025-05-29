@@ -105,11 +105,10 @@ const EnhancementParamsSchema = z.object({
 const NotificationParamsSchema = z.object({
   webhookUrl: z.string().url().describe("URL where notifications should be sent"),
   events: z.array(z.enum([
-    "webset.created", "webset.completed", "webset.failed",
-    "webset.search.created", "webset.search.completed", "webset.search.failed", 
-    "webset.enrichment.created", "webset.enrichment.completed", "webset.enrichment.failed",
-    "webset.item.created", "webset.item.enriched", "webset.item.failed",
-    "webhook.created", "webhook.failed"
+    "webset.created", "webset.deleted", "webset.paused", "webset.idle",
+    "webset.search.created", "webset.search.completed", "webset.search.updated", "webset.search.canceled",
+    "webset.export.created", "webset.export.completed",
+    "webset.item.created", "webset.item.enriched"
   ])).describe("Which events you want to be notified about"),
   
   advanced: z.object({
