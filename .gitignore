@@ -28,3 +28,4 @@ test-fixes.js
 
 # Exclude llms.txt
 ../llms.txt
+trees/
