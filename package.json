@@ -1,6 +1,6 @@
 {
   "name": "exa-websets-mcp-server",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "A Model Context Protocol server for Exa Websets management. Provides comprehensive websets collection management, real-time web searching, and helpful guidance through a simplified interface.",
   "type": "module",
   "repository": {
