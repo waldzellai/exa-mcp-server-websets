@@ -9,10 +9,10 @@ import { toolRegistry } from "./tools/config.js";
 import "./tools/webSearch.js";
 import "./tools/websetsManager.js";
 
-// Configuration schema for Smithery - API key is optional to allow tool listing
+// Configuration schema for Smithery - fully optional to allow tool listing
 export const configSchema = z.object({
   exaApiKey: z.string().optional().describe("The API key for accessing the Exa AI Websets and Search API.")
-});
+}).passthrough();
 
 // Create our simplified tool registry with three tools
 const simplifiedRegistry = {
