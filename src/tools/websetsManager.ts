@@ -19,16 +19,16 @@ const enrichmentToWebsetMap = new Map<string, string>();
 // Operation schemas with progressive disclosure
 const BaseOperationSchema = z.object({
   operation: z.enum([
-    // Content Collection Operations
-    "create_collection",
-    "list_collections", 
-    "get_collection_status",
-    "update_collection",
-    "delete_collection",
-    "cancel_collection",
+    // Content Webset Operations
+    "create_webset",
+    "list_websets", 
+    "get_webset_status",
+    "update_webset",
+    "delete_webset",
+    "cancel_webset",
     
     // Content Search Operations
-    "search_collection",
+    "search_webset",
     "get_search_results",
     "cancel_search",
     
@@ -53,13 +53,13 @@ const BaseOperationSchema = z.object({
   ]).describe("What you want to do"),
   
   // Target resource ID (when working with existing resources)
-  resourceId: z.string().optional().describe("ID of the collection, search, or enhancement to work with")
+  resourceId: z.string().optional().describe("ID of the webset, search, or enhancement to work with")
 });
 
-// Content Collection Parameters
-const CollectionParamsSchema = z.object({
-  searchQuery: z.string().describe("What you want to find (required for new collections)"),
-  description: z.string().optional().describe("Human-readable description of this collection"),
+// Content Webset Parameters
+const WebsetParamsSchema = z.object({
+  searchQuery: z.string().describe("What you want to find (required for new websets)"),
+  description: z.string().optional().describe("Human-readable description of this webset"),
   
   advanced: z.object({
     resultCount: z.number().min(1).max(1000).default(10).describe("How many items to find"),
@@ -69,12 +69,12 @@ const CollectionParamsSchema = z.object({
     })).optional().describe("Additional requirements for filtering results"),
     externalReference: z.string().optional().describe("Your own reference ID for tracking"),
     tags: z.record(z.string().max(1000)).optional().describe("Custom labels for organization")
-  }).optional().describe("Advanced collection settings")
+  }).optional().describe("Advanced webset settings")
 }).optional();
 
 // Search Parameters  
 const SearchParamsSchema = z.object({
-  query: z.string().describe("What to search for within the collection"),
+  query: z.string().describe("What to search for within the webset"),
   maxResults: z.number().min(1).max(100).default(10).describe("Maximum number of results to return"),
   
   advanced: z.object({
@@ -118,7 +118,7 @@ const NotificationParamsSchema = z.object({
 
 // Update Parameters
 const UpdateParamsSchema = z.object({
-  description: z.string().optional().describe("New description for the collection"),
+  description: z.string().optional().describe("New description for the webset"),
   tags: z.record(z.string().max(1000)).optional().describe("Updated custom labels")
 }).optional();
 
@@ -132,7 +132,7 @@ const QueryParamsSchema = z.object({
 // Combined schema
 const WebsetsManagerSchema = BaseOperationSchema.extend({
   // Operation-specific parameters
-  collection: CollectionParamsSchema,
+  webset: WebsetParamsSchema,
   search: SearchParamsSchema,
   enhancement: EnhancementParamsSchema,
   notification: NotificationParamsSchema,
@@ -143,12 +143,12 @@ const WebsetsManagerSchema = BaseOperationSchema.extend({
 // Register the unified tool
 toolRegistry["websets_manager"] = {
   name: "websets_manager",
-  description: "Manage content collections, searches, and data enhancements using Exa's platform. This single tool handles creating collections of web content, searching within them, enhancing data with AI, and setting up notifications. Much simpler than using separate tools for each operation.",
+  description: "Manage content websets, searches, and data enhancements using Exa's platform. This single tool handles creating websets of web content, searching within them, enhancing data with AI, and setting up notifications. Much simpler than using separate tools for each operation.",
   schema: WebsetsManagerSchema.shape,
   category: ToolCategory.WEBSETS,
   service: ServiceType.WEBSETS,
   handler: async (args) => {
-    const { operation, resourceId, collection, search, enhancement, notification, update, query: params } = args;
+    const { operation, resourceId, webset, search, enhancement, notification, update, query: params } = args;
     
     const requestId = `websets_manager-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
     const logger = createRequestLogger(requestId, 'websets_manager');
@@ -166,26 +166,26 @@ toolRegistry["websets_manager"] = {
       
       // Route to appropriate operation handler
       switch (operation) {
-        case "create_collection":
-          return await handleCreateCollection(services, collection, logger);
+        case "create_webset":
+          return await handleCreateWebset(services, webset, logger);
         
-        case "list_collections":
-          return await handleListCollections(services, params, logger);
+        case "list_websets":
+          return await handleListWebsets(services, params, logger);
           
-        case "get_collection_status":
-          return await handleGetCollectionStatus(services, resourceId, logger);
+        case "get_webset_status":
+          return await handleGetWebsetStatus(services, resourceId, logger);
           
-        case "update_collection":
-          return await handleUpdateCollection(services, resourceId, update, logger);
+        case "update_webset":
+          return await handleUpdateWebset(services, resourceId, update, logger);
           
-        case "delete_collection":
-          return await handleDeleteCollection(services, resourceId, logger);
+        case "delete_webset":
+          return await handleDeleteWebset(services, resourceId, logger);
           
-        case "cancel_collection":
-          return await handleCancelCollection(services, resourceId, logger);
+        case "cancel_webset":
+          return await handleCancelWebset(services, resourceId, logger);
           
-        case "search_collection":
-          return await handleSearchCollection(services, resourceId, search, logger);
+        case "search_webset":
+          return await handleSearchWebset(services, resourceId, search, logger);
           
         case "get_search_results":
           return await handleGetSearchResults(services, resourceId, logger);
@@ -265,9 +265,9 @@ toolRegistry["websets_manager"] = {
 };
 
 // Operation handlers with user-friendly responses
-async function handleCreateCollection(services: any, params: any, logger: any) {
+async function handleCreateWebset(services: any, params: any, logger: any) {
   if (!params?.searchQuery) {
-    throw new Error("searchQuery is required to create a collection");
+    throw new Error("searchQuery is required to create a webset");
   }
   
   const request = {
@@ -281,15 +281,15 @@ async function handleCreateCollection(services: any, params: any, logger: any) {
     ...(params.advanced?.tags && { metadata: params.advanced.tags })
   };
   
-  logger.log(`Creating collection for: "${params.searchQuery}"`);
+  logger.log(`Creating webset for: "${params.searchQuery}"`);
   
   // Use keep-alive for long-running operation
   const result = await withKeepAlive(
-    'Creating webset collection',
+    'Creating webset',
     async (keepAlive) => {
-      keepAlive.sendProgress('Initializing collection creation', 10);
+      keepAlive.sendProgress('Initializing webset creation', 10);
       const webset = await services.websetService.createWebset(request);
-      keepAlive.sendProgress('Collection created, processing will continue in background', 100);
+      keepAlive.sendProgress('Webset created, processing will continue in background', 100);
       return webset;
     },
     {
@@ -303,13 +303,13 @@ async function handleCreateCollection(services: any, params: any, logger: any) {
       type: "text" as const,
       text: JSON.stringify({
         success: true,
-        message: "Content collection created successfully! This will take 10-15 minutes to process.",
-        collectionId: result.id,
+        message: "Content webset created successfully! This will take 10-15 minutes to process.",
+        websetId: result.id,
         status: result.status,
         searchQuery: params.searchQuery,
         expectedResults: params.advanced?.resultCount || 10,
         nextSteps: [
-          `Check progress: use operation "get_collection_status" with resourceId "${result.id}"`,
+          `Check progress: use operation "get_webset_status" with resourceId "${result.id}"`,
           `When complete: use operation "list_content_items" with resourceId "${result.id}" to see results`
         ]
       }, null, 2)
@@ -317,8 +317,8 @@ async function handleCreateCollection(services: any, params: any, logger: any) {
   };
 }
 
-async function handleListCollections(services: any, params: any, logger: any) {
-  logger.log("Listing all collections");
+async function handleListWebsets(services: any, params: any, logger: any) {
+  logger.log("Listing all websets");
   const result = await services.websetService.listWebsets(
     undefined, // cursor not supported yet
     params?.limit || 25
@@ -329,8 +329,8 @@ async function handleListCollections(services: any, params: any, logger: any) {
       type: "text" as const,
       text: JSON.stringify({
         success: true,
-        message: `Found ${result.data.length} content collections`,
-        collections: result.data.map((ws: any) => ({
+        message: `Found ${result.data.length} content websets`,
+        websets: result.data.map((ws: any) => ({
           id: ws.id,
           status: ws.status,
           description: ws.description || "No description",
@@ -348,20 +348,20 @@ async function handleListCollections(services: any, params: any, logger: any) {
   };
 }
 
-async function handleGetCollectionStatus(services: any, resourceId: string | undefined, logger: any) {
+async function handleGetWebsetStatus(services: any, resourceId: string | undefined, logger: any) {
   if (!resourceId) {
-    throw new Error("resourceId is required to check collection status");
+    throw new Error("resourceId is required to check webset status");
   }
   
-  logger.log(`Getting status for collection: ${resourceId}`);
+  logger.log(`Getting status for webset: ${resourceId}`);
   const result = await services.websetService.getWebsetStatus(resourceId);
   
   const statusMessages = {
-    pending: "Collection is queued for processing",
-    processing: "Collection is being built (this takes 10-15 minutes)",
-    completed: "Collection is ready! You can now search and enhance the content.",
-    failed: "Collection creation failed. Please try again or contact support.",
-    cancelled: "Collection creation was cancelled"
+    pending: "Webset is queued for processing",
+    processing: "Webset is being built (this takes 10-15 minutes)",
+    completed: "Webset is ready! You can now search and enhance the content.",
+    failed: "Webset creation failed. Please try again or contact support.",
+    cancelled: "Webset creation was cancelled"
   };
   
   return {
@@ -369,7 +369,7 @@ async function handleGetCollectionStatus(services: any, resourceId: string | und
       type: "text" as const,
       text: JSON.stringify({
         success: true,
-        collectionId: resourceId,
+        websetId: resourceId,
         status: result.status,
         message: statusMessages[result.status as keyof typeof statusMessages] || `Status: ${result.status}`,
         details: {
@@ -381,7 +381,7 @@ async function handleGetCollectionStatus(services: any, resourceId: string | und
         },
         ...(result.status === "completed" && {
           nextSteps: [
-            `Search within collection: use operation "search_collection" with resourceId "${resourceId}"`,
+            `Search within webset: use operation "search_webset" with resourceId "${resourceId}"`,
             `View content: use operation "list_content_items" with resourceId "${resourceId}"`,
             `Enhance data: use operation "enhance_content" with resourceId "${resourceId}"`
           ]
@@ -391,12 +391,12 @@ async function handleGetCollectionStatus(services: any, resourceId: string | und
   };
 }
 
-async function handleSearchCollection(services: any, resourceId: string | undefined, params: any, logger: any) {
+async function handleSearchWebset(services: any, resourceId: string | undefined, params: any, logger: any) {
   if (!resourceId) {
-    throw new Error("resourceId is required to search within a collection");
+    throw new Error("resourceId is required to search within a webset");
   }
   if (!params?.query) {
-    throw new Error("query is required to search within a collection");
+    throw new Error("query is required to search within a webset");
   }
   
   const request = {
@@ -408,7 +408,7 @@ async function handleSearchCollection(services: any, resourceId: string | undefi
     ...(params.advanced?.tags && { metadata: params.advanced.tags })
   };
   
-  logger.log(`Searching collection ${resourceId} for: "${params.query}"`);
+  logger.log(`Searching webset ${resourceId} for: "${params.query}"`);
   const result = await services.searchService.createSearch(request);
   
   // Store the mapping for later retrieval
@@ -421,7 +421,7 @@ async function handleSearchCollection(services: any, resourceId: string | undefi
         success: true,
         message: "Search started successfully!",
         searchId: result.id,
-        collectionId: resourceId,
+        websetId: resourceId,
         query: params.query,
         status: result.status,
         nextSteps: [
@@ -435,17 +435,17 @@ async function handleSearchCollection(services: any, resourceId: string | undefi
 // Helper function to provide operation-specific help
 function getOperationHelp(operation: string): string[] {
   const helpMap: Record<string, string[]> = {
-    "create_collection": [
+    "create_webset": [
       "Provide a searchQuery describing what content you want to collect",
       "Optionally specify resultCount in advanced settings",
-      "Collection creation takes 10-15 minutes to complete"
+      "Webset creation takes 10-15 minutes to complete"
     ],
-    "search_collection": [
-      "Provide resourceId of the collection to search within",
-      "Provide query describing what to find in the collection"
+    "search_webset": [
+      "Provide resourceId of the webset to search within",
+      "Provide query describing what to find in the webset"
     ],
     "enhance_content": [
-      "Provide resourceId of the collection to enhance",
+      "Provide resourceId of the webset to enhance",
       "Provide task describing what additional data you want to extract"
     ]
   };
@@ -456,7 +456,7 @@ function getOperationHelp(operation: string): string[] {
   ];
 }
 
-async function handleUpdateCollection(services: any, resourceId: string | undefined, params: any, logger: any) {
+async function handleUpdateWebset(services: any, resourceId: string | undefined, params: any, logger: any) {
   if (!resourceId) {
     throw new Error("resourceId is required to update a collection");
   }
@@ -480,7 +480,7 @@ async function handleUpdateCollection(services: any, resourceId: string | undefi
     throw new Error("At least one field (description or tags) must be provided for update");
   }
   
-  logger.log(`Updating collection: ${resourceId}`);
+  logger.log(`Updating webset: ${resourceId}`);
   await services.websetService.updateWebset(resourceId, updateData);
   
   return {
@@ -488,20 +488,20 @@ async function handleUpdateCollection(services: any, resourceId: string | undefi
       type: "text" as const,
       text: JSON.stringify({
         success: true,
-        message: "Collection updated successfully",
-        collectionId: resourceId,
+        message: "Webset updated successfully",
+        websetId: resourceId,
         updatedMetadata: updateData.metadata
       }, null, 2)
     }]
   };
 }
 
-async function handleDeleteCollection(services: any, resourceId: string | undefined, logger: any) {
+async function handleDeleteWebset(services: any, resourceId: string | undefined, logger: any) {
   if (!resourceId) {
-    throw new Error("resourceId is required to delete a collection");
+    throw new Error("resourceId is required to delete a webset");
   }
   
-  logger.log(`Deleting collection: ${resourceId}`);
+  logger.log(`Deleting webset: ${resourceId}`);
   await services.websetService.deleteWebset(resourceId);
   
   return {
@@ -509,19 +509,19 @@ async function handleDeleteCollection(services: any, resourceId: string | undefi
       type: "text" as const,
       text: JSON.stringify({
         success: true,
-        message: "Collection deleted successfully",
-        deletedCollectionId: resourceId
+        message: "Webset deleted successfully",
+        deletedWebsetId: resourceId
       }, null, 2)
     }]
   };
 }
 
-async function handleCancelCollection(services: any, resourceId: string | undefined, logger: any) {
+async function handleCancelWebset(services: any, resourceId: string | undefined, logger: any) {
   if (!resourceId) {
-    throw new Error("resourceId is required to cancel a collection");
+    throw new Error("resourceId is required to cancel a webset");
   }
   
-  logger.log(`Cancelling collection: ${resourceId}`);
+  logger.log(`Cancelling webset: ${resourceId}`);
   const result = await services.websetService.cancelWebset(resourceId);
   
   return {
@@ -529,8 +529,8 @@ async function handleCancelCollection(services: any, resourceId: string | undefi
       type: "text" as const,
       text: JSON.stringify({
         success: true,
-        message: "Collection creation cancelled",
-        collectionId: resourceId,
+        message: "Webset creation cancelled",
+        websetId: resourceId,
         status: result.status
       }, null, 2)
     }]
@@ -610,7 +610,7 @@ async function handleGetSearchResults(services: any, resourceId: string | undefi
       text: JSON.stringify({
         success: true,
         searchId: resourceId,
-        collectionId: websetId,
+        websetId: websetId,
         status: searchResult.status,
         query: searchResult.query,
         progress: {
@@ -789,7 +789,7 @@ async function handleEnhanceContent(services: any, resourceId: string | undefine
         success: true,
         message: "Content enhancement started successfully!",
         enhancementId: result.id,
-        collectionId: resourceId,
+        websetId: resourceId,
         task: params.task,
         status: result.status,
         nextSteps: [
@@ -822,7 +822,7 @@ async function handleGetEnhancementResults(services: any, resourceId: string | u
         enhancementId: resourceId,
         status: result.status,
         task: result.description,
-        collectionId: websetId,
+        websetId: websetId,
         createdAt: result.createdAt,
         ...(result.status === "completed" && result.results && {
           results: result.results
@@ -1060,7 +1060,7 @@ async function handleListActivities(services: any, params: any, logger: any) {
                 description: "Configure webhooks to receive real-time event notifications instead of polling"
               },
               {
-                action: "get_collection_status", 
+                action: "get_webset_status", 
                 description: "Monitor individual webset status and progress directly"
               },
               {
@@ -1068,13 +1068,13 @@ async function handleListActivities(services: any, params: any, logger: any) {
                 description: "Check search completion status and results"
               },
               {
-                action: "list_collections",
-                description: "List all collections to see their current states"
+                action: "list_websets",
+                description: "List all websets to see their current states"
               }
             ],
             recommendations: [
               "Consider setting up webhooks for event-driven workflows",
-              "Use collection status monitoring for progress tracking",
+              "Use webset status monitoring for progress tracking",
               "Check back later as the Events API may be implemented in future updates"
             ]
           }, null, 2)
@@ -1159,7 +1159,7 @@ async function handleGetActivityDetails(services: any, resourceId: string | unde
                 description: "Check if webhook notifications are already configured"
               },
               {
-                action: "get_collection_status",
+                action: "get_webset_status",
                 description: "Monitor webset status changes for activity tracking" 
               }
             ],
@@ -1206,7 +1206,7 @@ async function handleListContentItems(services: any, resourceId: string | undefi
     throw new Error("resourceId is required to list content items");
   }
   
-  logger.log(`Listing content items for collection: ${resourceId}`);
+  logger.log(`Listing content items for webset: ${resourceId}`);
   const result = await services.itemService.listItems(
     resourceId,
     undefined, // cursor not supported yet
@@ -1218,7 +1218,7 @@ async function handleListContentItems(services: any, resourceId: string | undefi
       type: "text" as const,
       text: JSON.stringify({
         success: true,
-        collectionId: resourceId,
+        websetId: resourceId,
         message: `Found ${result.data.length} content items`,
         items: result.data.map((item: any) => ({
           id: item.id,

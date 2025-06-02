@@ -1,8 +1,7 @@
-#!/usr/bin/env node
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { z } from "zod";
 import dotenv from "dotenv";
-// Removed yargs - no longer needed for tool selection
 
 // Import only the tools we need
 import websetsGuideTool from "./tools/websetsGuide.js";
@@ -13,7 +12,10 @@ import { toolRegistry } from "./tools/config.js";
 import "./tools/webSearch.js";
 import "./tools/websetsManager.js";
 
-dotenv.config();
+// Configuration schema for Smithery
+export const configSchema = z.object({
+  exaApiKey: z.string().describe("The API key for accessing the Exa AI Websets and Search API.")
+});
 
 // Create our simplified tool registry with three tools
 const simplifiedRegistry = {
@@ -22,12 +24,6 @@ const simplifiedRegistry = {
   websets_guide: websetsGuideTool
 };
 
-// Check for API key after handling list-tools to allow listing without a key
-const API_KEY = process.env.EXA_API_KEY;
-if (!API_KEY) {
-  throw new Error("EXA_API_KEY environment variable is required");
-}
-
 /**
  * Exa AI Websets MCP Server
  * 
@@ -35,55 +31,67 @@ if (!API_KEY) {
  * functionality to AI assistants through the Model Context Protocol.
  * 
  * The server provides three essential tools:
- * - websets_manager: Comprehensive websets collection management
+ * - websets_manager: Comprehensive websets management
  * - web_search_exa: Real-time web searching capabilities
  * - websets_guide: Helpful guidance for using websets
  */
 
-class ExaServer {
-  private server: McpServer;
-  private keepAliveInterval?: NodeJS.Timeout;
+/**
+ * Create and configure the MCP server instance
+ */
+function createServer(apiKey: string): McpServer {
+  // Set the API key in the environment for tools to use
+  process.env.EXA_API_KEY = apiKey;
+  
+  const server = new McpServer({
+    name: "exa-websets-server",
+    version: "1.0.0"
+  });
+  
+  // Register our tools
+  Object.entries(simplifiedRegistry).forEach(([_toolId, tool]) => {
+    if (tool) {
+      // Handle both formats - websetsGuide uses inputSchema/execute
+      // while tools from registry use schema/handler
+      const schema = (tool as any).inputSchema || tool.schema;
+      const handler = (tool as any).execute || tool.handler;
+      
+      server.tool(
+        tool.name,
+        tool.description,
+        schema,
+        handler
+      );
+    }
+  });
+  
+  log(`Configured server with ${Object.keys(simplifiedRegistry).length} tools`);
+  
+  return server;
+}
 
-  constructor() {
-    this.server = new McpServer({
-      name: "exa-websets-server",
-      version: "1.0.0"
-    });
-    
-    log("Server initialized");
+/**
+ * Default export for Smithery - creates and returns the server instance
+ */
+export default function ({ config }: { config: { exaApiKey: string } }) {
+  const server = createServer(config.exaApiKey);
+  return server.server;
+}
+
+// Check if this is being run as a CLI (stdio mode)
+if (import.meta.url === `file://${process.argv[1]}`) {
+  // Running as CLI - use stdio transport
+  dotenv.config();
+  
+  const API_KEY = process.env.EXA_API_KEY;
+  if (!API_KEY) {
+    log("EXA_API_KEY environment variable is required");
+    process.exit(1);
   }
-
-  private setupTools(): string[] {
-    // Register our two tools
-    const registeredTools: string[] = [];
-    
-    Object.entries(simplifiedRegistry).forEach(([toolId, tool]) => {
-      if (tool) {
-        // Handle both formats - websetsGuide uses inputSchema/execute
-        // while tools from registry use schema/handler
-        const schema = (tool as any).inputSchema || tool.schema;
-        const handler = (tool as any).execute || tool.handler;
-        
-        this.server.tool(
-          tool.name,
-          tool.description,
-          schema,
-          handler
-        );
-        registeredTools.push(toolId);
-      }
-    });
-    
-    return registeredTools;
-  }
-
-  async run(): Promise<void> {
+  
+  (async () => {
     try {
-      // Set up tools before connecting
-      const registeredTools = this.setupTools();
-      
-      log(`Starting Exa MCP server with ${registeredTools.length} tools: ${registeredTools.join(', ')}`);
-      
+      const server = createServer(API_KEY);
       const transport = new StdioServerTransport();
       
       // Handle connection errors
@@ -91,58 +99,38 @@ class ExaServer {
         log(`Transport error: ${error.message}`);
       };
       
-      await this.server.connect(transport);
+      await server.server.connect(transport);
       log("Exa Websets MCP server running on stdio");
       
       // Set up keep-alive to prevent timeout
-      this.setupKeepAlive();
+      const keepAliveInterval = setInterval(async () => {
+        try {
+          await server.server.sendLoggingMessage({
+            level: "debug",
+            data: "Keep-alive heartbeat",
+            logger: "server"
+          });
+        } catch (error) {
+          log(`Failed to send heartbeat: ${error}`);
+        }
+      }, 30000);
+      
+      // Clean up on process exit
+      const cleanup = () => {
+        clearInterval(keepAliveInterval);
+        log("Server shutting down gracefully");
+        process.exit(0);
+      };
+      
+      process.on('SIGINT', cleanup);
+      process.on('SIGTERM', cleanup);
     } catch (error) {
-      log(`Server initialization error: ${error instanceof Error ? error.message : String(error)}`);
-      throw error;
+      log(`Fatal server error: ${error instanceof Error ? error.message : String(error)}`);
+      process.exit(1);
     }
-  }
-
-  private setupKeepAlive(): void {
-    // Send a heartbeat every 30 seconds to prevent timeout
-    this.keepAliveInterval = setInterval(async () => {
-      try {
-        // Send a debug-level logging message over the MCP connection
-        // This keeps the stdio connection active
-        await this.server.server.sendLoggingMessage({
-          level: "debug",
-          data: "Keep-alive heartbeat",
-          logger: "server"
-        });
-        log("Server heartbeat sent");
-      } catch (error) {
-        log(`Failed to send heartbeat: ${error}`);
-      }
-    }, 30000);
-
-    // Clean up on process exit
-    process.on('SIGINT', () => this.cleanup());
-    process.on('SIGTERM', () => this.cleanup());
-  }
-
-  private cleanup(): void {
-    if (this.keepAliveInterval) {
-      clearInterval(this.keepAliveInterval);
-    }
-    log("Server shutting down gracefully");
-    process.exit(0);
-  }
+  })();
 }
 
-// Create and run the server with proper error handling
-(async () => {
-  try {
-    const server = new ExaServer();
-    await server.run();
-  } catch (error) {
-    log(`Fatal server error: ${error instanceof Error ? error.message : String(error)}`);
-    process.exit(1);
-  }
-})();
 // Export all components for library usage
 export * from './api/index.js';
 export * from './services/index.js';
@@ -152,6 +140,3 @@ export * from './state/index.js';
 export * from './types/websets.js';
 export * from './config/websets.js';
 export * from './utils/logger.js';
-
-// Export the main server class for programmatic usage
-export { ExaServer };
