@@ -1,30 +1,4 @@
 # Smithery configuration file: https://smithery.ai/docs/deployments
 
-startCommand:
-  type: stdio
-  configSchema:
-    # JSON Schema defining the configuration options for the MCP.
-    type: object
-    properties:
-      exaApiKey:
-        type: string
-        description: The API key for accessing the Exa AI Websets and Search API.
-        required: true
-  commandFunction:
-    # A function that produces the CLI command to start the MCP on stdio.
-    # This server provides three essential tools:
-    # - websets_manager: Comprehensive content collection management
-    # - web_search_exa: Real-time web search capabilities
-    # - websets_guide: Helpful guidance and examples
-    |-
-    (config) => {
-      const env = {}
-      if (config.exaApiKey) {
-        env.EXA_API_KEY = config.exaApiKey
-      }
-      return { 
-        command: 'node', 
-        args: ['build/index.js'], 
-        env 
-      }
-    }
+# Runtime configuration for TypeScript
+runtime: typescript

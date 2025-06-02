@@ -10,11 +10,11 @@ import { toolRegistry, ToolCategory, ServiceType } from "./config.js";
 
 toolRegistry["websets_guide"] = {
   name: "websets_guide",
-  description: "Get helpful guidance, examples, and workflows for using Exa's content collections effectively. Learn how to create collections, search content, enhance data, and set up notifications with practical examples.",
+  description: "Get helpful guidance, examples, and workflows for using Exa's content websets effectively. Learn how to create websets, search content, enhance data, and set up notifications with practical examples.",
   schema: {
     topic: z.enum([
       "getting_started",
-      "creating_collections", 
+      "creating_websets", 
       "searching_content",
       "enhancing_data",
       "setting_notifications",
@@ -28,17 +28,26 @@ toolRegistry["websets_guide"] = {
   handler: async ({ topic }) => {
     const guides = {
       getting_started: {
-        title: "Getting Started with Content Collections",
+        title: "Getting Started with Content Websets",
         content: `
-**Welcome to Exa's Content Collections!**
+**Welcome to Exa's Content Websets!**
 
-Content collections help you gather, organize, and enhance web content at scale. Here's how to get started:
+Content websets help you gather, organize, and enhance web content at scale. 
 
-**Step 1: Create Your First Collection**
-Use the websets_manager tool with operation "create_collection":
+**Available Operations:**
+- \`create_webset\`, \`list_websets\`, \`get_webset_status\`, \`update_webset\`, \`delete_webset\`
+- \`search_webset\`, \`get_search_results\`, \`cancel_search\`
+- \`enhance_content\`, \`get_enhancement_results\`, \`delete_enhancement\`
+- \`setup_notifications\`, \`list_notifications\`, \`remove_notifications\`
+- \`list_content_items\`
+
+Here's how to get started:
+
+**Step 1: Create Your First Webset**
+Use the websets_manager tool with operation "create_webset":
 \`\`\`
-operation: "create_collection"
-collection: {
+operation: "create_webset"
+webset: {
   searchQuery: "AI startups in San Francisco 2024",
   description: "Research on AI companies in SF",
   advanced: {
@@ -49,46 +58,46 @@ collection: {
 \`\`\`
 
 **Step 2: Monitor Progress**
-Check status with operation "get_collection_status":
+Check status with operation "get_webset_status":
 \`\`\`
-operation: "get_collection_status"
-resourceId: "your-collection-id"
+operation: "get_webset_status"
+resourceId: "your-webset-id"
 \`\`\`
 
 **Step 3: Explore Your Content**
 Once complete, view items with operation "list_content_items":
 \`\`\`
 operation: "list_content_items"
-resourceId: "your-collection-id"
+resourceId: "your-webset-id"
 \`\`\`
 
 **Next Steps:**
-- Search within your collection
+- Search within your webset
 - Enhance content with AI analysis
 - Set up notifications for updates
         `
       },
 
-      creating_collections: {
-        title: "Creating Effective Content Collections",
+      creating_websets: {
+        title: "Creating Effective Content Websets",
         content: `
-**Creating Content Collections**
+**Creating Content Websets**
 
-Collections take 10-15 minutes to build but provide rich, organized content.
+Websets take 10-15 minutes to build but provide rich, organized content.
 
-**Basic Collection:**
+**Basic Webset:**
 \`\`\`
-operation: "create_collection"
-collection: {
+operation: "create_webset"
+webset: {
   searchQuery: "sustainable fashion brands",
   description: "Research on eco-friendly clothing companies"
 }
 \`\`\`
 
-**Advanced Collection with Filters:**
+**Advanced Webset with Filters:**
 \`\`\`
-operation: "create_collection"
-collection: {
+operation: "create_webset"
+webset: {
   searchQuery: "fintech companies Series A funding",
   description: "Fintech startups that raised Series A in 2024",
   advanced: {
@@ -106,7 +115,7 @@ collection: {
 }
 \`\`\`
 
-**Tips for Better Collections:**
+**Tips for Better Websets:**
 - Be specific in your search query
 - Use criteria to filter results
 - Set appropriate result counts (10-100)
@@ -115,16 +124,16 @@ collection: {
       },
 
       searching_content: {
-        title: "Searching Within Collections",
+        title: "Searching Within Websets",
         content: `
-**Searching Your Collections**
+**Searching Your Websets**
 
-Once a collection is complete, you can search within it for specific information.
+Once a webset is complete, you can search within it for specific information.
 
 **Basic Search:**
 \`\`\`
-operation: "search_collection"
-resourceId: "your-collection-id"
+operation: "search_webset"
+resourceId: "your-webset-id"
 search: {
   query: "pricing information",
   maxResults: 10
@@ -133,8 +142,8 @@ search: {
 
 **Advanced Search with Filters:**
 \`\`\`
-operation: "search_collection"
-resourceId: "your-collection-id"
+operation: "search_webset"
+resourceId: "your-webset-id"
 search: {
   query: "executive team leadership bios",
   maxResults: 20,
@@ -171,7 +180,7 @@ Transform raw content into structured, useful data with AI analysis.
 **Basic Enhancement:**
 \`\`\`
 operation: "enhance_content"
-resourceId: "your-collection-id"
+resourceId: "your-webset-id"
 enhancement: {
   task: "Extract company founding year and employee count"
 }
@@ -180,7 +189,7 @@ enhancement: {
 **Structured Enhancement with Options:**
 \`\`\`
 operation: "enhance_content"
-resourceId: "your-collection-id"
+resourceId: "your-webset-id"
 enhancement: {
   task: "Categorize company by business model",
   advanced: {
@@ -199,7 +208,7 @@ enhancement: {
 **Specific Data Extraction:**
 \`\`\`
 operation: "enhance_content"
-resourceId: "your-collection-id"
+resourceId: "your-webset-id"
 enhancement: {
   task: "Extract CEO email address",
   advanced: {
@@ -222,14 +231,23 @@ enhancement: {
         content: `
 **Webhook Notifications**
 
-Get notified when collections, searches, or enhancements complete.
+Get notified when websets, searches, or enhancements complete.
+
+**Available Events:**
+- \`webset.created\` - When a new webset is created
+- \`webset.idle\` - When webset processing completes
+- \`webset.deleted\` - When a webset is deleted
+- \`webset.search.completed\` - When a search finishes
+- \`webset.search.created\` - When a search starts
+- \`webset.item.created\` - When new items are added
+- \`webset.item.enriched\` - When items are enhanced
 
 **Basic Notification Setup:**
 \`\`\`
 operation: "setup_notifications"
 notification: {
   webhookUrl: "https://your-app.com/webhooks/exa",
-  events: ["collection.completed", "search.completed"]
+  events: ["webset.idle", "webset.search.completed"]
 }
 \`\`\`
 
@@ -239,8 +257,8 @@ operation: "setup_notifications"
 notification: {
   webhookUrl: "https://your-app.com/webhooks/exa",
   events: [
-    "collection.created", "collection.completed", "collection.failed",
-    "search.completed", "enhancement.completed"
+    "webset.created", "webset.idle", "webset.deleted",
+    "webset.search.completed", "webset.item.created"
   ],
   advanced: {
     tags: {
@@ -268,10 +286,10 @@ notification: {
         content: `
 **Example 1: Competitor Research Workflow**
 
-1. **Create Collection:**
+1. **Create Webset:**
 \`\`\`
-operation: "create_collection"
-collection: {
+operation: "create_webset"
+webset: {
   searchQuery: "project management software companies",
   description: "Research competitors in PM space",
   advanced: { resultCount: 30, focusArea: "company" }
@@ -280,15 +298,15 @@ collection: {
 
 2. **Search for Pricing:**
 \`\`\`
-operation: "search_collection"
-resourceId: "collection-id"
+operation: "search_webset"
+resourceId: "webset-id"
 search: { query: "pricing plans subscription costs" }
 \`\`\`
 
 3. **Extract Pricing Data:**
 \`\`\`
 operation: "enhance_content"
-resourceId: "collection-id"
+resourceId: "webset-id"
 enhancement: {
   task: "Extract pricing information and plans",
   advanced: { outputFormat: "text" }
@@ -297,10 +315,10 @@ enhancement: {
 
 **Example 2: Lead Generation Workflow**
 
-1. **Create Target Company Collection:**
+1. **Create Target Company Webset:**
 \`\`\`
-operation: "create_collection"
-collection: {
+operation: "create_webset"
+webset: {
   searchQuery: "healthcare startups seed funding 2024",
   advanced: { 
     resultCount: 50,
@@ -311,15 +329,15 @@ collection: {
 
 2. **Find Decision Makers:**
 \`\`\`
-operation: "search_collection"
-resourceId: "collection-id"  
+operation: "search_webset"
+resourceId: "webset-id"  
 search: { query: "founder CEO leadership team contact" }
 \`\`\`
 
 3. **Extract Contact Info:**
 \`\`\`
 operation: "enhance_content"
-resourceId: "collection-id"
+resourceId: "webset-id"
 enhancement: {
   task: "Extract CEO name and company email",
   advanced: { outputFormat: "email" }
@@ -328,7 +346,7 @@ enhancement: {
 
 **Example 3: Market Research Workflow**
 
-1. **Create Industry Collection**
+1. **Create Industry Webset**
 2. **Search for Market Size Data**
 3. **Enhance with Trend Analysis**
 4. **Set Up Monitoring Notifications**
@@ -340,10 +358,10 @@ enhancement: {
         content: `
 **Common Issues and Solutions**
 
-**Collection Creation Issues:**
-- ❌ "Collection failed": Try more specific search queries
+**Webset Creation Issues:**
+- ❌ "Webset failed": Try more specific search queries
 - ❌ "No results found": Broaden your search terms
-- ❌ "Timeout": Collections with 100+ results may take longer
+- ❌ "Timeout": Websets with 100+ results may take longer
 
 **Search Issues:**
 - ❌ "Search returned no results": Try broader query terms
@@ -362,23 +380,23 @@ enhancement: {
 - ❌ "Rate limiting": Space out requests, respect rate limits
 
 **Best Practices:**
-- Always check collection status before searching/enhancing
+- Always check webset status before searching/enhancing
 - Use descriptive resource IDs and tags for organization
 - Monitor webhook endpoints for reliability
-- Start with small collections to test workflows
+- Start with small websets to test workflows
         `
       },
 
       best_practices: {
         title: "Best Practices and Tips",
         content: `
-**Best Practices for Content Collections**
+**Best Practices for Content Websets**
 
-**Collection Design:**
+**Webset Design:**
 - 🎯 Be specific with search queries for better results
 - 📊 Start with 10-20 results, scale up as needed
 - 🏷️ Use tags and descriptions for organization
-- ⏰ Plan for 10-15 minute collection build times
+- ⏰ Plan for 10-15 minute webset build times
 
 **Search Optimization:**
 - 🔍 Search for concepts, not just keywords  
@@ -400,7 +418,7 @@ enhancement: {
 
 **Resource Management:**
 - 🏷️ Use meaningful resource IDs and descriptions
-- 🧹 Clean up unused collections and enhancements
+- 🧹 Clean up unused websets and enhancements
 - 📊 Track usage with tags and metadata
 - 🔍 Monitor activities with event listing
 
