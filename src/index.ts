@@ -12,10 +12,10 @@ import { toolRegistry } from "./tools/config.js";
 import "./tools/webSearch.js";
 import "./tools/websetsManager.js";
 
-// Configuration schema for Smithery
+// Configuration schema for Smithery - optional to allow tool listing
 export const configSchema = z.object({
   exaApiKey: z.string().describe("The API key for accessing the Exa AI Websets and Search API.")
-});
+}).optional();
 
 // Create our simplified tool registry with three tools
 const simplifiedRegistry = {
@@ -39,28 +39,39 @@ const simplifiedRegistry = {
 /**
  * Create and configure the MCP server instance
  */
-function createServer(apiKey: string): McpServer {
-  // Set the API key in the environment for tools to use
-  process.env.EXA_API_KEY = apiKey;
+function createServer(apiKey?: string): McpServer {
+  // Store API key for later use - don't set it globally yet
+  const storedApiKey = apiKey;
   
   const server = new McpServer({
     name: "exa-websets-server",
     version: "1.0.0"
   });
   
-  // Register our tools
+  // Register our tools with lazy API key validation
   Object.entries(simplifiedRegistry).forEach(([_toolId, tool]) => {
     if (tool) {
       // Handle both formats - websetsGuide uses inputSchema/execute
       // while tools from registry use schema/handler
       const schema = (tool as any).inputSchema || tool.schema;
-      const handler = (tool as any).execute || tool.handler;
+      const originalHandler = (tool as any).execute || tool.handler;
+      
+      // Wrap handler to validate API key on first use
+      const wrappedHandler = async (args: any, extra: any) => {
+        // Set API key when tool is actually used
+        if (storedApiKey) {
+          process.env.EXA_API_KEY = storedApiKey;
+        } else if (!process.env.EXA_API_KEY) {
+          throw new Error("EXA_API_KEY is required to use this tool");
+        }
+        return originalHandler(args, extra);
+      };
       
       server.tool(
         tool.name,
         tool.description,
         schema,
-        handler
+        wrappedHandler
       );
     }
   });
@@ -73,8 +84,9 @@ function createServer(apiKey: string): McpServer {
 /**
  * Default export for Smithery - creates and returns the server instance
  */
-export default function ({ config }: { config: { exaApiKey: string } }) {
-  const server = createServer(config.exaApiKey);
+export default function ({ config }: { config?: { exaApiKey?: string } } = {}) {
+  // Create server with optional API key - allows tool listing without config
+  const server = createServer(config?.exaApiKey);
   return server.server;
 }
 
