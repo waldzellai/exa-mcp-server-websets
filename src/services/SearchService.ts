@@ -23,7 +23,7 @@ export class SearchService extends BaseService {
     
     const endpoint = this.buildEndpoint('/websets/{websetId}/searches', { websetId: request.websetId });
     const sanitizedRequest = this.sanitizeParams({
-      behaviour: "override", // Required by API - default behavior to reuse existing items
+      behavior: "override", // Required by API - default behavior to reuse existing items
       query: request.query,
       entity: request.entity,
       criteria: request.criteria,
