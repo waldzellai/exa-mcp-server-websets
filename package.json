@@ -8,9 +8,6 @@
     "type": "git",
     "url": "git+https://github.com/waldzellai/exa-websets-mcp-server.git"
   },
-  "bin": {
-    "exa-websets-mcp-server": "./build/index.js"
-  },
   "files": [
     "build"
   ],
@@ -27,10 +24,10 @@
   ],
   "author": "Exa Labs + Waldzell AI",
   "scripts": {
-    "build": "tsc && node -e \"require('fs').chmodSync('build/index.js', '755')\"",
+    "build": "tsc",
     "prepare": "npm run build",
     "watch": "tsc --watch",
-    "inspector": "npx @modelcontextprotocol/inspector build/index.js",
+    "dev": "npx @smithery/cli dev",
     "prepublishOnly": "npm run build",
     "test": "jest",
     "test:watch": "jest --watch",
@@ -39,7 +36,6 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.0",
     "axios": "^1.7.8",
-    "dotenv": "^16.5.0",
     "zod": "^3.22.4"
   },
   "devDependencies": {

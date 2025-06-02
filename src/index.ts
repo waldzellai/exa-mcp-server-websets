@@ -1,7 +1,5 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import dotenv from "dotenv";
 
 // Import only the tools we need
 import websetsGuideTool from "./tools/websetsGuide.js";
@@ -88,59 +86,6 @@ export default function ({ config }: { config?: { exaApiKey?: string } } = {}) {
   // Create server with optional API key - allows tool listing without config
   const server = createServer(config?.exaApiKey);
   return server.server;
-}
-
-// Check if this is being run as a CLI (stdio mode)
-if (import.meta.url === `file://${process.argv[1]}`) {
-  // Running as CLI - use stdio transport
-  dotenv.config();
-  
-  const API_KEY = process.env.EXA_API_KEY;
-  if (!API_KEY) {
-    log("EXA_API_KEY environment variable is required");
-    process.exit(1);
-  }
-  
-  (async () => {
-    try {
-      const server = createServer(API_KEY);
-      const transport = new StdioServerTransport();
-      
-      // Handle connection errors
-      transport.onerror = (error) => {
-        log(`Transport error: ${error.message}`);
-      };
-      
-      await server.server.connect(transport);
-      log("Exa Websets MCP server running on stdio");
-      
-      // Set up keep-alive to prevent timeout
-      const keepAliveInterval = setInterval(async () => {
-        try {
-          await server.server.sendLoggingMessage({
-            level: "debug",
-            data: "Keep-alive heartbeat",
-            logger: "server"
-          });
-        } catch (error) {
-          log(`Failed to send heartbeat: ${error}`);
-        }
-      }, 30000);
-      
-      // Clean up on process exit
-      const cleanup = () => {
-        clearInterval(keepAliveInterval);
-        log("Server shutting down gracefully");
-        process.exit(0);
-      };
-      
-      process.on('SIGINT', cleanup);
-      process.on('SIGTERM', cleanup);
-    } catch (error) {
-      log(`Fatal server error: ${error instanceof Error ? error.message : String(error)}`);
-      process.exit(1);
-    }
-  })();
 }
 
 // Export all components for library usage
