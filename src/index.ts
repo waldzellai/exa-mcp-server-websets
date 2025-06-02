@@ -3,7 +3,6 @@ import { z } from "zod";
 
 // Import only the tools we need
 import websetsGuideTool from "./tools/websetsGuide.js";
-import { log } from "./utils/logger.js";
 import { toolRegistry } from "./tools/config.js";
 
 // Import tools to register them
