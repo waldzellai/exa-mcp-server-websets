@@ -2,13 +2,3 @@
 
 # Runtime configuration for TypeScript
 runtime: typescript
-
-# Start command configuration for HTTP transport
-startCommand:
-  type: http
-  configSchema:
-    type: object
-    properties:
-      exaApiKey:
-        type: string
-        description: The API key for accessing the Exa AI Websets and Search API.
