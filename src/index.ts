@@ -74,8 +74,6 @@ function createServer(apiKey?: string): McpServer {
     }
   });
   
-  log(`Configured server with ${Object.keys(simplifiedRegistry).length} tools`);
-  
   return server;
 }
 
