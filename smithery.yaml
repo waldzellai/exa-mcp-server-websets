@@ -2,3 +2,9 @@
 
 # Runtime configuration for TypeScript
 runtime: typescript
+
+# Environment variables for the server
+env:
+  EXA_API_KEY: "${EXA_API_KEY}"
+  DEBUG: "true"
+  LOG_LEVEL: "info"
