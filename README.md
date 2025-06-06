@@ -252,11 +252,13 @@ npx exa-websets-mcp-server
 
 ## Changelog
 
-### v1.0.3 (2025-06-06)
+### v1.0.4 (2025-06-06)
 - Added stdio transport support for local MCP connections
 - Fixed server startup for both Claude Desktop and Smithery deployments
 - Improved compatibility with Claude Code
 - Enhanced error handling and security checks
+- Added comprehensive prompt system with 10 interactive workflows
+- Improved package metadata for npm publishing
 
 ### v1.0.2 (2025-05-27)
 - Fixed keep-alive mechanism to prevent connection timeouts
