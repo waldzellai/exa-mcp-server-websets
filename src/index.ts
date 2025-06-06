@@ -254,9 +254,15 @@ export * from './config/websets.js';
 export * from './utils/logger.js';
 
 // Run the server if this file is executed directly
-if (import.meta.url === `file://${process.argv[1]}`) {
-  const transport = new StdioServerTransport();
-  const server = createServer(process.env.EXA_API_KEY);
-  
-  server.server.connect(transport);
+// This check works in ESM but will be ignored in CommonJS builds
+try {
+  // @ts-ignore - import.meta might not exist in some environments
+  if (typeof import.meta?.url !== 'undefined' && import.meta.url === `file://${process.argv[1]}`) {
+    const transport = new StdioServerTransport();
+    const server = createServer(process.env.EXA_API_KEY);
+    
+    server.server.connect(transport);
+  }
+} catch {
+  // Ignore errors in CommonJS environments
 }
