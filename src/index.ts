@@ -1,4 +1,7 @@
+#!/usr/bin/env node
+
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 
 // Import only the tools we need
@@ -8,6 +11,20 @@ import { toolRegistry } from "./tools/config.js";
 // Import tools to register them
 import "./tools/webSearch.js";
 import "./tools/websetsManager.js";
+
+// Import prompts
+import {
+  listMcpAssets,
+  websetDiscovery,
+  websetStatusCheck,
+  websetAnalysisGuide,
+  webhookSetupGuide,
+  quickStart,
+  enrichmentWorkflow,
+  horizontalProcess,
+  websetPortal,
+  iterativeIntelligence
+} from "./prompts/index.js";
 
 // Configuration schema for Smithery
 export const configSchema = z.object({
@@ -73,6 +90,147 @@ function createServer(apiKey?: string): McpServer {
     }
   });
   
+  // Register prompts
+  server.prompt("list_mcp_assets", "List all available MCP server capabilities including prompts, tools, and resources", async () => ({
+    messages: [{
+      role: "user",
+      content: {
+        type: "text",
+        text: await listMcpAssets()
+      }
+    }]
+  }));
+  
+  server.prompt("webset_discovery", "Discover and explore available websets", async () => ({
+    messages: [{
+      role: "user",
+      content: {
+        type: "text",
+        text: await websetDiscovery()
+      }
+    }]
+  }));
+  
+  server.prompt("webset_status_check", "Check status of async webset operations", 
+    { websetId: z.string().describe("The ID of the webset to check") },
+    async ({ websetId }) => ({
+      messages: [{
+        role: "user",
+        content: {
+          type: "text",
+          text: await websetStatusCheck(websetId)
+        }
+      }]
+    })
+  );
+  
+  server.prompt("webset_analysis_guide", "Guide for analyzing completed websets",
+    { websetId: z.string().describe("The ID of the webset to analyze") },
+    async ({ websetId }) => ({
+      messages: [{
+        role: "user",
+        content: {
+          type: "text",
+          text: await websetAnalysisGuide(websetId)
+        }
+      }]
+    })
+  );
+  
+  server.prompt("webhook_setup_guide", "Configure webhooks for webset notifications", async () => ({
+    messages: [{
+      role: "user",
+      content: {
+        type: "text",
+        text: await webhookSetupGuide()
+      }
+    }]
+  }));
+  
+  server.prompt("quick_start", "Get started quickly with creating your first webset", async () => ({
+    messages: [{
+      role: "user",
+      content: {
+        type: "text",
+        text: await quickStart()
+      }
+    }]
+  }));
+  
+  server.prompt("enrichment_workflow", "Workflow for enriching webset data",
+    { websetId: z.string().describe("The ID of the webset to enrich") },
+    async ({ websetId }) => ({
+      messages: [{
+        role: "user",
+        content: {
+          type: "text",
+          text: await enrichmentWorkflow(websetId)
+        }
+      }]
+    })
+  );
+  
+  server.prompt("horizontal_process", "Create multiple websets and analyze cross-matches to build a meta-dataset",
+    { 
+      searchCriteria: z.string().describe("Comma-separated list of search queries to create websets from"),
+      projectName: z.string().optional().describe("Name for the horizontal analysis project")
+    },
+    async ({ searchCriteria, projectName }) => ({
+      messages: [{
+        role: "user",
+        content: {
+          type: "text",
+          text: await horizontalProcess(
+            searchCriteria.split(',').map(s => s.trim()),
+            projectName
+          )
+        }
+      }]
+    })
+  );
+  
+  server.prompt("webset_portal", "Deep-dive research through webset URLs using parallel subagents",
+    {
+      websetId: z.string().describe("The ID of the webset containing URLs to research"),
+      researchQuery: z.string().describe("What insights you're looking for"),
+      maxPortals: z.string().optional().describe("Maximum number of URLs to research in parallel (default: 5)")
+    },
+    async ({ websetId, researchQuery, maxPortals }) => ({
+      messages: [{
+        role: "user",
+        content: {
+          type: "text",
+          text: await websetPortal(
+            websetId,
+            researchQuery,
+            maxPortals ? parseInt(maxPortals) : undefined
+          )
+        }
+      }]
+    })
+  );
+  
+  server.prompt("iterative_intelligence", "Self-improving research system with webset registry for fast retrieval",
+    {
+      researchTopic: z.string().describe("The research topic to explore iteratively"),
+      iterations: z.string().optional().describe("Number of research iterations (default: 3)"),
+      registryPath: z.string().optional().describe("Path to webset registry (default: ./webset-registry)")
+    },
+    async ({ researchTopic, iterations, registryPath }) => ({
+      messages: [{
+        role: "user",
+        content: {
+          type: "text",
+          text: await iterativeIntelligence(
+            researchTopic,
+            iterations ? parseInt(iterations) : undefined,
+            registryPath
+          )
+        }
+      }]
+    })
+  );
+  
   return server;
 }
 
@@ -94,3 +252,11 @@ export * from './state/index.js';
 export * from './types/websets.js';
 export * from './config/websets.js';
 export * from './utils/logger.js';
+
+// Run the server if this file is executed directly
+if (import.meta.url === `file://${process.argv[1]}`) {
+  const transport = new StdioServerTransport();
+  const server = createServer(process.env.EXA_API_KEY);
+  
+  server.server.connect(transport);
+}

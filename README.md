@@ -6,16 +6,31 @@ A Model Context Protocol (MCP) server that provides Exa AI's websets management 
 
 ## Features ✨
 
-This MCP server provides three essential tools:
+This MCP server provides three essential tools and seven agentic prompts:
 
+### Tools
 - **websets_manager**: A comprehensive tool for managing content collections, searches, and data enhancements
 - **web_search_exa**: Real-time web search capabilities powered by Exa AI
 - **websets_guide**: Helpful guidance and examples for using websets effectively
+
+### Prompts (NEW!)
+Interactive workflows to guide you through websets operations:
+- **list_mcp_assets**: Comprehensive list of all server capabilities
+- **quick_start**: Get started quickly with creating your first webset
+- **webset_discovery**: Discover and explore available websets
+- **webset_status_check**: Monitor async webset operations with guided instructions
+- **webset_analysis_guide**: Step-by-step guide for analyzing completed websets
+- **webhook_setup_guide**: Configure webhooks for real-time notifications
+- **enrichment_workflow**: Detailed workflow for enriching webset data with AI
+- **horizontal_process**: Advanced workflow for creating multiple websets and building meta-datasets from cross-matches
+- **webset_portal**: Deep-dive parallel research through webset URLs using Claude Code subagents
+- **iterative_intelligence**: Self-improving research system with webset registry for fast retrieval and batch processing
 
 ### Why Choose This Server?
 
 - **Simplified**: Just 3 tools instead of 20+ individual ones
 - **Comprehensive**: The websets_manager handles all 20 websets operations in one tool
+- **Guided**: Agentic prompts provide step-by-step workflows for complex operations
 - **Fast**: No dynamic tool loading - all tools are immediately available
 - **Reliable**: 100% operational coverage with graceful error handling
 
@@ -190,6 +205,20 @@ Available topics:
 - troubleshooting
 - best_practices
 
+## Using Prompts 💬
+
+Prompts provide interactive workflows that guide you through complex websets operations. They're especially useful for:
+- Understanding the asynchronous nature of websets
+- Learning best practices for different use cases
+- Getting step-by-step instructions with example commands
+
+To use a prompt in Claude, simply mention it:
+- "Use the quick_start prompt to help me create my first webset"
+- "Show me the webset_status_check for webset_abc123"
+- "Guide me through enrichment_workflow for my completed webset"
+
+Each prompt provides contextual guidance, example commands, and best practices tailored to your specific situation.
+
 ## Using via NPX
 
 Run the server directly with npx:
@@ -222,6 +251,12 @@ npx exa-websets-mcp-server
    * Monitor webset status through get_collection_status
 
 ## Changelog
+
+### v1.0.3 (2025-06-06)
+- Added stdio transport support for local MCP connections
+- Fixed server startup for both Claude Desktop and Smithery deployments
+- Improved compatibility with Claude Code
+- Enhanced error handling and security checks
 
 ### v1.0.2 (2025-05-27)
 - Fixed keep-alive mechanism to prevent connection timeouts

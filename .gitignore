@@ -4,6 +4,7 @@ build/
 .env*
 .smithery/
 claude_code_mcp_config.json
+.claude/
 # Test coverage
 coverage/
 test-results/
@@ -31,3 +32,8 @@ test-fixes.js
 # Exclude llms.txt
 ../llms.txt
 trees/
+
+quick-data-mcp/
+specs
+quick-data-mcp/.claude
+quick-data-mcp/ai_docs

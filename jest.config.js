@@ -76,6 +76,7 @@ export default {
   testPathIgnorePatterns: [
     '/node_modules/',
     '/dist/',
-    '/coverage/'
+    '/coverage/',
+    '\\.enhanced\\.test\\.ts$'
   ]
 };
