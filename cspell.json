@@ -18,7 +18,11 @@
     "webhook",
     "webhooks",
     "enrichment",
-    "enrichments"
+    "enrichments",
+    "agentic",
+    "Agentic",
+    "techcrunch",
+    "modelcontextprotocol"
   ],
   "dictionaries": ["typescript", "node", "npm"],
   "ignorePaths": [

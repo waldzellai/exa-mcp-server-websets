@@ -20,6 +20,11 @@ CLAUDE.md
 INTEGRATION.md
 Dockerfile
 smithery.yaml
+.claude/
+examples/
+specs/
+trees/
+cspell.json
 
 # Reference documentation files (parent directory)
 ../*-spec.md
@@ -36,3 +41,5 @@ smithery.yaml
 
 # Exclude llms.txt
 ../llms.txt 
+
+tests
