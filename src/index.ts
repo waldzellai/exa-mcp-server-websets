@@ -237,18 +237,18 @@ export class ExaWebsetsServer {
     this.server.prompt("webset_portal", "Portal for webset management",
       {
         websetId: z.string().describe("The ID of the webset to manage"),
-        view: z.string().optional().describe("Optional view type")
+        researchQuery: z.string().optional().describe("Research query for analyzing the webset")
       },
-      async ({ websetId, view }) => {
-        // Provide a default value for the researchQuery parameter when view is undefined
-        const researchQuery = view || "General webset analysis";
+      async ({ websetId, researchQuery }) => {
+        // Provide a default value when researchQuery is undefined
+        const queryToUse = researchQuery || "General webset analysis";
         
         return {
           messages: [{
             role: "user",
             content: {
               type: "text",
-              text: await websetPortal(websetId, researchQuery)
+              text: await websetPortal(websetId, queryToUse)
             }
           }]
         };
