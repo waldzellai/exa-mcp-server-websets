@@ -14,3 +14,4 @@ export * from './enrichmentWorkflow.js';
 export * from './horizontalProcess.js';
 export * from './websetPortal.js';
 export * from './iterativeIntelligence.js';
+export * from './integrationProcess.js';
