@@ -2,7 +2,6 @@
 
 import { config } from "dotenv";
 import express from "express";
-import cors from "cors";
 import { randomUUID } from "node:crypto";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
@@ -20,16 +19,17 @@ import "./tools/websetsManager.js";
 
 // Import prompts
 import {
-  listMcpAssets,
-  websetDiscovery,
-  websetStatusCheck,
-  websetAnalysisGuide,
-  webhookSetupGuide,
-  quickStart,
   enrichmentWorkflow,
   horizontalProcess,
+  integrationProcess,
+  iterativeIntelligence,
+  listMcpAssets,
+  quickStart,
+  websetAnalysisGuide,
+  websetDiscovery,
   websetPortal,
-  iterativeIntelligence
+  websetStatusCheck,
+  webhookSetupGuide
 } from "./prompts/index.js";
 
 // Load environment variables
@@ -197,7 +197,7 @@ export class ExaWebsetsServer {
       })
     );
     
-    this.server.prompt("horizontal_process", "Process for horizontal webset integration",
+    this.server.prompt("integration_process", "Process for integrating a webset with external systems",
       { 
         websetId: z.string().describe("The ID of the webset to integrate"),
         targetSystem: z.string().describe("The target system for integration")
@@ -207,10 +207,31 @@ export class ExaWebsetsServer {
           role: "user",
           content: {
             type: "text",
-            text: await horizontalProcess(websetId, targetSystem)
+            text: await integrationProcess(websetId, targetSystem)
           }
         }]
       })
+    );
+    
+    this.server.prompt("horizontal_process", "Process for analyzing multiple websets horizontally",
+      { 
+        searchCriteria: z.string().describe("Comma-separated list of search terms to create and analyze websets"),
+        projectName: z.string().optional().describe("Name for the horizontal analysis project")
+      },
+      async ({ searchCriteria, projectName }) => {
+        // Transform comma-separated string to array inline
+        const criteriaArray = searchCriteria.split(',').map(s => s.trim());
+        
+        return {
+          messages: [{
+            role: "user",
+            content: {
+              type: "text",
+              text: await horizontalProcess(criteriaArray, projectName)
+            }
+          }]
+        };
+      }
     );
     
     this.server.prompt("webset_portal", "Portal for webset management",
@@ -227,7 +248,7 @@ export class ExaWebsetsServer {
           }
         }]
       })
-    );
+    ); 
     
     this.server.prompt("iterative_intelligence", "Research assistant for iterative webset improvement",
       { 
