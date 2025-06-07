@@ -239,15 +239,20 @@ export class ExaWebsetsServer {
         websetId: z.string().describe("The ID of the webset to manage"),
         view: z.string().optional().describe("Optional view type")
       },
-      async ({ websetId, view }) => ({
-        messages: [{
-          role: "user",
-          content: {
-            type: "text",
-            text: await websetPortal(websetId, view)
-          }
-        }]
-      })
+      async ({ websetId, view }) => {
+        // Provide a default value for the researchQuery parameter when view is undefined
+        const researchQuery = view || "General webset analysis";
+        
+        return {
+          messages: [{
+            role: "user",
+            content: {
+              type: "text",
+              text: await websetPortal(websetId, researchQuery)
+            }
+          }]
+        };
+      }
     ); 
     
     this.server.prompt("iterative_intelligence", "Research assistant for iterative webset improvement",
