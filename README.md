@@ -33,6 +33,8 @@ Interactive workflows to guide you through websets operations:
 - **Guided**: Agentic prompts provide step-by-step workflows for complex operations
 - **Fast**: No dynamic tool loading - all tools are immediately available
 - **Reliable**: 100% operational coverage with graceful error handling
+- **Smart Pagination**: Automatic handling of large responses to prevent token overflow
+- **Auto-Polling**: Optional automatic polling for async operations (search, enhance)
 
 ## Remote Exa Websets MCP 🌐
 
@@ -215,6 +217,65 @@ Prompts provide interactive workflows that guide you through complex websets ope
 To use a prompt in Claude, simply mention it:
 - "Use the quick_start prompt to help me create my first webset"
 - "Show me the webset_status_check for webset_abc123"
+
+## Pagination and Polling Best Practices 📖
+
+### Automatic Pagination
+
+The server automatically handles large responses to prevent token overflow:
+
+```javascript
+// List activities - automatically paginated if no limit specified
+operation: "list_activities"
+// Returns manageable chunks that fit within token limits
+
+// Or specify your own limit if you know what you need
+operation: "list_activities"
+query: { limit: 5 }
+```
+
+**How it works:**
+- If you don't specify a limit, the server automatically paginates results
+- Starts with small batches and adjusts based on response size
+- Prevents "response too large" errors from MCP clients
+- Works for activities, websets, and content items
+
+### Automatic Polling for Async Operations
+
+Search and enhancement operations can now wait for results automatically:
+
+```javascript
+// Search with automatic polling (waits up to 1 minute)
+operation: "search_webset"
+resourceId: "webset_123"
+search: {
+  query: "AI startups",
+  advanced: {
+    waitForResults: true  // Enable auto-polling
+  }
+}
+
+// Enhancement with automatic polling (waits up to 2 minutes)
+operation: "enhance_content"
+resourceId: "webset_123"
+enhancement: {
+  task: "Extract company names and funding",
+  advanced: {
+    waitForResults: true  // Enable auto-polling
+  }
+}
+```
+
+**Polling intervals:**
+- Search: Checks every 2 seconds for up to 1 minute
+- Enhancement: Checks every 3 seconds for up to 2 minutes
+- No exponential backoff - predictable, reasonable intervals
+- Progress updates logged during polling
+
+**When to use:**
+- Enable `waitForResults` when you need results immediately
+- Disable it (default) when running batch operations
+- Polling stops as soon as operation completes or fails
 - "Guide me through enrichment_workflow for my completed webset"
 
 Each prompt provides contextual guidance, example commands, and best practices tailored to your specific situation.
@@ -251,6 +312,14 @@ npx exa-websets-mcp-server
    * Monitor webset status through get_collection_status
 
 ## Changelog
+
+### v1.0.5 (2025-06-20)
+- Added automatic pagination for large responses to prevent token overflow
+- Implemented optional auto-polling for async operations (search, enhance)
+- Added `waitForResults` option for immediate results from async operations
+- Improved activity list handling with smart pagination
+- Added progress logging during polling operations
+- No exponential backoff - uses predictable, reasonable polling intervals
 
 ### v1.0.4 (2025-06-06)
 - Added stdio transport support for local MCP connections

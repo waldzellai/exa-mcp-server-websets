@@ -3,6 +3,8 @@ import { toolRegistry, ToolCategory, ServiceType } from "./config.js";
 import { createServices } from "../services/index.js";
 import { createRequestLogger } from "../utils/logger.js";
 import { withKeepAlive } from "../utils/keepAlive.js";
+import { PAGINATION_DEFAULTS, autoPaginate, createPaginatedResponse } from "../utils/pagination.js";
+import { pollOperation, pollWithRetry, POLLING_DEFAULTS, createProgressLogger } from "../utils/polling.js";
 
 // Store mappings for searches and enrichments to their websets
 const searchToWebsetMap = new Map<string, string>();
@@ -84,7 +86,8 @@ const SearchParamsSchema = z.object({
     requirements: z.array(z.object({
       description: z.string().describe("Specific requirement for search results")
     })).optional().describe("Additional search requirements"),
-    tags: z.record(z.string().max(1000)).optional().describe("Custom labels for this search")
+    tags: z.record(z.string().max(1000)).optional().describe("Custom labels for this search"),
+    waitForResults: z.boolean().optional().describe("Automatically poll until search completes (max 1 minute)")
   }).optional().describe("Advanced search settings")
 }).optional();
 
@@ -94,6 +97,7 @@ const EnhancementParamsSchema = z.object({
   
   advanced: z.object({
     outputFormat: z.enum(["text", "date", "number", "options", "email", "phone"]).default("text").describe("Expected format of the results"),
+    waitForResults: z.boolean().optional().describe("Automatically poll until enhancement completes (max 2 minutes)"),
     choices: z.array(z.object({
       label: z.string().describe("Possible answer option")
     })).optional().describe("Predefined answer choices (only for 'options' format)"),
@@ -414,6 +418,80 @@ async function handleSearchWebset(services: any, resourceId: string | undefined,
   // Store the mapping for later retrieval
   searchToWebsetMap.set(result.id, resourceId);
   
+  // Check if auto-polling is requested
+  if (params.advanced?.waitForResults) {
+    logger.log("Auto-polling enabled for search results");
+    
+    const pollingResult = await pollWithRetry(
+      async () => {
+        const searchResult = await services.searchService.getSearch(resourceId, result.id);
+        return {
+          status: searchResult.status,
+          data: searchResult
+        };
+      },
+      {
+        ...POLLING_DEFAULTS.SEARCH,
+        onProgress: createProgressLogger("Search")
+      }
+    );
+    
+    if (pollingResult.success && pollingResult.data) {
+      // Get the actual search result items if completed
+      let searchResultsItems = null;
+      if (pollingResult.data.status === "completed") {
+        try {
+          searchResultsItems = await services.itemService.getItemsBySearchId(resourceId, result.id);
+        } catch (error) {
+          logger.log(`Warning: Could not retrieve search result items: ${error}`);
+        }
+      }
+      
+      return {
+        content: [{
+          type: "text" as const,
+          text: JSON.stringify({
+            success: true,
+            message: `Search completed after ${pollingResult.attempts} checks (${Math.round(pollingResult.duration / 1000)}s)`,
+            searchId: result.id,
+            websetId: resourceId,
+            query: params.query,
+            status: pollingResult.data.status,
+            progress: {
+              found: pollingResult.data.progress?.found || 0,
+              completion: pollingResult.data.progress?.completion || 0
+            },
+            ...(searchResultsItems && {
+              results: searchResultsItems.slice(0, 10).map((item: any) => ({
+                id: item.id,
+                title: item.title,
+                url: item.url,
+                snippet: item.content ? item.content.substring(0, 200) + "..." : "No content preview"
+              })),
+              totalResults: searchResultsItems.length,
+              note: searchResultsItems.length > 10 ? `Showing first 10 of ${searchResultsItems.length} results` : undefined
+            })
+          }, null, 2)
+        }]
+      };
+    } else {
+      return {
+        content: [{
+          type: "text" as const,
+          text: JSON.stringify({
+            success: false,
+            message: `Search polling failed: ${pollingResult.error}`,
+            searchId: result.id,
+            websetId: resourceId,
+            query: params.query,
+            attempts: pollingResult.attempts
+          }, null, 2)
+        }]
+      };
+    }
+  }
+  
+  // Default behavior - return immediately
   return {
     content: [{
       type: "text" as const,
@@ -425,7 +503,8 @@ async function handleSearchWebset(services: any, resourceId: string | undefined,
         query: params.query,
         status: result.status,
         nextSteps: [
-          `Check results: use operation "get_search_results" with resourceId "${result.id}"`
+          `Check results: use operation "get_search_results" with resourceId "${result.id}"`,
+          `Or search with waitForResults in advanced settings to auto-poll for results`
         ]
       }, null, 2)
     }]
@@ -782,6 +861,61 @@ async function handleEnhanceContent(services: any, resourceId: string | undefine
   // Store the mapping for later retrieval
   enrichmentToWebsetMap.set(result.id, resourceId);
   
+  // Check if auto-polling is requested
+  if (params.advanced?.waitForResults) {
+    logger.log("Auto-polling enabled for enhancement results");
+    
+    const pollingResult = await pollWithRetry(
+      async () => {
+        const enhancementResult = await services.enrichmentService.getEnrichment(resourceId, result.id);
+        return {
+          status: enhancementResult.status,
+          data: enhancementResult
+        };
+      },
+      {
+        ...POLLING_DEFAULTS.ENHANCEMENT,
+        onProgress: createProgressLogger("Enhancement")
+      }
+    );
+    
+    if (pollingResult.success && pollingResult.data) {
+      return {
+        content: [{
+          type: "text" as const,
+          text: JSON.stringify({
+            success: true,
+            message: `Enhancement completed after ${pollingResult.attempts} checks (${Math.round(pollingResult.duration / 1000)}s)`,
+            enhancementId: result.id,
+            websetId: resourceId,
+            task: params.task,
+            status: pollingResult.data.status,
+            createdAt: pollingResult.data.createdAt,
+            ...(pollingResult.data.status === "completed" && pollingResult.data.results && {
+              results: pollingResult.data.results,
+              resultCount: Array.isArray(pollingResult.data.results) ? pollingResult.data.results.length : 1
+            })
+          }, null, 2)
+        }]
+      };
+    } else {
+      return {
+        content: [{
+          type: "text" as const,
+          text: JSON.stringify({
+            success: false,
+            message: `Enhancement polling failed: ${pollingResult.error}`,
+            enhancementId: result.id,
+            websetId: resourceId,
+            task: params.task,
+            attempts: pollingResult.attempts
+          }, null, 2)
+        }]
+      };
+    }
+  }
+  
+  // Default behavior - return immediately
   return {
     content: [{
       type: "text" as const,
@@ -793,7 +927,8 @@ async function handleEnhanceContent(services: any, resourceId: string | undefine
         task: params.task,
         status: result.status,
         nextSteps: [
-          `Check results: use operation "get_enhancement_results" with resourceId "${result.id}"`
+          `Check results: use operation "get_enhancement_results" with resourceId "${result.id}"`,
+          `Or enhance with waitForResults in advanced settings to auto-poll for results`
         ]
       }, null, 2)
     }]
@@ -994,27 +1129,68 @@ async function handleListActivities(services: any, params: any, logger: any) {
   logger.log("Listing recent activities");
   
   try {
-    const result = await services.eventService.listEvents({
-      limit: params?.limit || 25,
-      cursor: params?.cursor
+    // If limit is specified, use it directly (user knows what they want)
+    if (params?.limit) {
+      const result = await services.eventService.listEvents({
+        limit: params.limit,
+        cursor: params?.cursor
+      });
+      
+      const events = result.events || result.data || [];
+      
+      return {
+        content: [{
+          type: "text" as const,
+          text: JSON.stringify({
+            success: true,
+            message: `Found ${events.length} recent activities`,
+            total: events.length,
+            nextCursor: result.nextCursor,
+            activities: events.map((event: any) => ({
+              id: event.id,
+              type: event.type,
+              timestamp: event.createdAt,
+              object: event.object,
+              summary: `${event.type} event occurred`,
+              ...(event.data && { data: event.data })
+            }))
+          }, null, 2)
+        }]
+      };
+    }
+    
+    // Otherwise, use automatic pagination to prevent token overflow
+    logger.log("Using automatic pagination for activities");
+    
+    const allEvents = await autoPaginate(async ({ limit, offset }) => {
+      const result = await services.eventService.listEvents({
+        limit: limit || PAGINATION_DEFAULTS.ACTIVITIES,
+        cursor: params?.cursor // TODO: offset-based pagination if API supports it
+      });
+      
+      const events = result.events || result.data || [];
+      
+      return createPaginatedResponse(
+        events,
+        { limit, offset },
+        undefined // Total count not available from API
+      );
     });
     
-    logger.log(`Event service response structure: ${JSON.stringify(Object.keys(result))}`);
-    
-    // EventService returns events in the 'events' field or 'data' field
-    const events = result.events || result.data || [];
-    
-    logger.log(`Found ${events.length} events`);
+    logger.log(`Auto-paginated ${allEvents.length} events`);
     
     return {
       content: [{
         type: "text" as const,
         text: JSON.stringify({
           success: true,
-          message: `Found ${events.length} recent activities`,
-          total: events.length,
-          nextCursor: result.nextCursor,
-          activities: events.map((event: any) => ({
+          message: `Found ${allEvents.length} recent activities (auto-paginated to prevent token overflow)`,
+          total: allEvents.length,
+          pagination: {
+            note: "Results were automatically paginated to fit within token limits",
+            actualCount: allEvents.length
+          },
+          activities: allEvents.map((event: any) => ({
             id: event.id,
             type: event.type,
             timestamp: event.createdAt,

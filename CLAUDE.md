@@ -23,6 +23,15 @@ npm run test:coverage  # Generate coverage report
 npm run build && npm test
 ```
 
+## Server Modes
+
+The server supports multiple transport modes:
+- **Default (no args)**: HTTP mode on port 3000 (MCP standard)
+- `--stdio`: Use STDIO transport (when explicitly requested)
+- `--http [port]`: Use HTTP transport with custom port
+
+**Note**: If port 3000 is in use, specify a different port with `--http 3456`
+
 ## Architecture
 
 ### Module System
