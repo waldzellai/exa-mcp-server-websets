@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "websets-mcp": {
+      "command": "node",
+      "args": ["/Users/b.c.nims/ExaContract/websets/exa-mcp-server-websets/build/index.js"],
+      "env": {
+        "EXA_API_KEY": "test-key"
+      }
+    }
+  }
+}
