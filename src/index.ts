@@ -17,6 +17,9 @@ import { toolRegistry } from "./tools/config.js";
 import "./tools/webSearch.js";
 import "./tools/websetsManager.js";
 
+// Import feature flags
+import { featureFlags } from "./config/features.js";
+
 // Import prompts
 import {
   enrichmentWorkflow,
@@ -74,10 +77,23 @@ export class ExaWebsetsServer {
       process.env.EXA_API_KEY = apiKey;
     }
     
-    // Initialize MCP server
+    // Build server capabilities based on feature flags
+    const capabilities: any = {};
+    
+    if (featureFlags.isEnabled('logging')) {
+      capabilities.logging = {};
+    }
+    
+    if (featureFlags.isEnabled('sampling')) {
+      capabilities.sampling = {};
+    }
+    
+    // Initialize MCP server with capabilities
     this.server = new McpServer({
       name: "exa-websets-server",
       version: "1.0.4"
+    }, {
+      capabilities
     });
     
     // Initialize Express app
@@ -87,6 +103,7 @@ export class ExaWebsetsServer {
     // Setup server components
     this.registerTools();
     this.registerPrompts();
+    this.registerProtocolHandlers();
   }
 
   /**
@@ -278,6 +295,63 @@ export class ExaWebsetsServer {
   }
 
   /**
+   * Register protocol handlers for MCP compliance
+   */
+  private registerProtocolHandlers(): void {
+    // Access the underlying server protocol for advanced handlers
+    const protocol = this.server.server;
+    
+    // Always register ping handler (required by MCP)
+    protocol.setRequestHandler(
+      z.object({
+        method: z.literal('ping')
+      }),
+      async () => {
+        return {
+          pong: true,
+          timestamp: new Date().toISOString()
+        };
+      }
+    );
+    
+    // Register logging handler only if feature is enabled
+    if (featureFlags.isEnabled('logging')) {
+      protocol.setRequestHandler(
+        z.object({
+          method: z.literal('logging/setLevel'),
+          params: z.object({
+            level: z.string()
+          }).optional()
+        }),
+        async (request) => {
+          // TODO: Implement logging level changes
+          return {
+            success: true,
+            message: "Logging level change acknowledged (not yet implemented)"
+          };
+        }
+      );
+    }
+    
+    // Register sampling handler only if feature is enabled
+    if (featureFlags.isEnabled('sampling')) {
+      protocol.setRequestHandler(
+        z.object({
+          method: z.literal('sampling/createMessage'),
+          params: z.any().optional()
+        }),
+        async (request) => {
+          // TODO: Implement sampling
+          return {
+            success: true,
+            message: "Sampling acknowledged (not yet implemented)"
+          };
+        }
+      );
+    }
+  }
+
+  /**
    * Get the internal MCP server instance
    */
   public getMcpServer(): McpServer {
@@ -395,7 +469,7 @@ export class ExaWebsetsServer {
     try {
       const transport = new StdioServerTransport();
       await this.server.connect(transport);
-      console.error(`${colors.bright}${colors.magenta}Exa Websets MCP Server${colors.reset} started in ${colors.bright}STDIO mode${colors.reset}`);
+      console.log(`${colors.bright}${colors.magenta}Exa Websets MCP Server${colors.reset} started in ${colors.bright}STDIO mode${colors.reset}`);
     } catch (error) {
       console.error(`${colors.bright}${colors.red}Failed to start STDIO server:${colors.reset}`, error);
       process.exit(1);
@@ -411,16 +485,19 @@ async function main(): Promise<void> {
     const mode = process.argv[2];
     const server = new ExaWebsetsServer(process.env.EXA_API_KEY);
     
-    if (mode === '--stdio') {
-      // STDIO mode when explicitly requested
-      await server.startStdioServer();
-    } else if (mode === '--http') {
+    if (mode === '--http') {
       // HTTP mode with optional port
       const port = process.argv[3] ? parseInt(process.argv[3]) : 3000;
+      console.log(`${colors.bright}${colors.yellow}Starting in HTTP mode on port ${port}${colors.reset}`);
       await server.startHttpServer(port);
+    } else if (mode === '--stdio') {
+      // STDIO mode when explicitly requested
+      console.log(`${colors.bright}${colors.yellow}Starting in STDIO mode${colors.reset}`);
+      await server.startStdioServer();
     } else {
-      // Default to HTTP mode on port 3000
-      await server.startHttpServer(3000);
+      // Default to STDIO mode (MCP standard)
+      console.log(`${colors.bright}${colors.yellow}Starting in STDIO mode (default)${colors.reset}`);
+      await server.startStdioServer();
     }
   } catch (error) {
     console.error(`${colors.bright}${colors.red}Fatal error:${colors.reset}`, error);
