@@ -1,26 +1,3 @@
-# Smithery configuration file: https://smithery.ai/docs/deployments
-
-# Runtime configuration - using container for flexibility
-runtime: container
-
-# Build configuration
-build:
-  dockerfile: "Dockerfile"
-  dockerBuildPath: "."
-
-# Start command configuration
-startCommand:
-  type: "http"
-  configSchema:
-    type: "object"
-    required: ["exaApiKey"]
-    properties:
-      exaApiKey:
-        type: "string"
-        description: "The API key for accessing the Exa AI Websets and Search API."
-    description: "Schema for the /mcp endpoint configuration"
-
-# Environment variables
+runtime: "typescript"
 env:
-  EXA_API_KEY: "${configSchema.exaApiKey}"
   NODE_ENV: "production"
