@@ -487,7 +487,8 @@ async function main(): Promise<void> {
     
     if (mode === '--http') {
       // HTTP mode with optional port
-      const port = process.argv[3] ? parseInt(process.argv[3]) : 3000;
+      const port = process.env.PORT ? parseInt(process.env.PORT) : 
+                   process.argv[3] ? parseInt(process.argv[3]) : 3000;
       console.log(`${colors.bright}${colors.yellow}Starting in HTTP mode on port ${port}${colors.reset}`);
       await server.startHttpServer(port);
     } else if (mode === '--stdio') {

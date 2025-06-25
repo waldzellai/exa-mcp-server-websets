@@ -20,4 +20,4 @@ RUN npm run build
 RUN npm prune --production
 
 # Start the MCP server
-CMD ["node", "build/index.js"]
+CMD ["node", "build/index.js", "--http"]
