@@ -307,10 +307,7 @@ export class ExaWebsetsServer {
         method: z.literal('ping')
       }),
       async () => {
-        return {
-          pong: true,
-          timestamp: new Date().toISOString()
-        };
+        return {};
       }
     );
     
