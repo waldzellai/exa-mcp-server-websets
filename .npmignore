@@ -43,3 +43,9 @@ cspell.json
 ../llms.txt 
 
 tests
+
+# Temporarily exclude dev artifacts
+
+CONNECTION_ISSUES_ANALYSIS.md
+SMITHERY_LOGS.md
+debug-wrapper.js
