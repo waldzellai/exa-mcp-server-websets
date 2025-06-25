@@ -520,5 +520,19 @@ function createServer(apiKey?: string): McpServer {
   return server.getMcpServer();
 }
 
-// Default export for programmatic usage
-export default createServer;
+// Export configSchema for Smithery
+export const configSchema = z.object({
+  exaApiKey: z.string().describe("The API key for accessing the Exa AI Websets and Search API")
+});
+
+// Default export for Smithery - function that accepts config
+export default function ({ config }: { config: z.infer<typeof configSchema> }) {
+  try {
+    // Create server with API key from config
+    const server = new ExaWebsetsServer(config.exaApiKey);
+    return server.getMcpServer();
+  } catch (e) {
+    console.error(e);
+    throw e;
+  }
+}
