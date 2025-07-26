@@ -5,6 +5,7 @@ export { toolRegistry, ToolFactory, ToolCategory, ServiceType } from "./config.j
 import "./webSearch.js";
 import "./websetsManager.js";
 import "./websetsGuide.js";
+import "./mem0Store.js";
 
 // When adding a new tool, import it here
 // import "./newTool.js";
