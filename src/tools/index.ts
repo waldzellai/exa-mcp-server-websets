@@ -6,6 +6,7 @@ import "./webSearch.js";
 import "./websetsManager.js";
 import "./websetsGuide.js";
 import "./mem0Store.js";
+import "./knowledgeGraph.js";
 
 // When adding a new tool, import it here
 // import "./newTool.js";

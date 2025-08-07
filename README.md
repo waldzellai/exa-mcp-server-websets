@@ -12,6 +12,7 @@ This MCP server provides three essential tools and seven agentic prompts:
 - **websets_manager**: A comprehensive tool for managing content collections, searches, and data enhancements
 - **web_search_exa**: Real-time web search capabilities powered by Exa AI
 - **websets_guide**: Helpful guidance and examples for using websets effectively
+- **knowledge_graph**: Maintain connections between webset results in an onboard graph
 
 ### Prompts (NEW!)
 Interactive workflows to guide you through websets operations:
