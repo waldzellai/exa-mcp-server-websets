@@ -16,6 +16,7 @@ import { toolRegistry } from "./tools/config.js";
 // Import tools to register them
 import "./tools/webSearch.js";
 import "./tools/websetsManager.js";
+import "./tools/knowledgeGraph.js";
 
 // Import feature flags
 import { featureFlags } from "./config/features.js";
@@ -56,10 +57,11 @@ const colors = {
  * This MCP server provides Exa AI's websets management capabilities and basic web search
  * functionality to AI assistants through the Model Context Protocol.
  * 
- * The server provides three essential tools:
+ * The server provides four essential tools:
  * - websets_manager: Comprehensive websets management
  * - web_search_exa: Real-time web searching capabilities
  * - websets_guide: Helpful guidance for using websets
+ * - knowledge_graph: Onboard graph to track connections between webset results
  */
 export class ExaWebsetsServer {
   private app: express.Application;
@@ -111,11 +113,12 @@ export class ExaWebsetsServer {
    */
   private registerTools(): void {
     // Create our simplified tool registry with three tools
-    const simplifiedRegistry = {
-      web_search_exa: toolRegistry["web_search_exa"],
-      websets_manager: toolRegistry["websets_manager"],
-      websets_guide: websetsGuideTool
-    };
+      const simplifiedRegistry = {
+        web_search_exa: toolRegistry["web_search_exa"],
+        websets_manager: toolRegistry["websets_manager"],
+        websets_guide: websetsGuideTool,
+        knowledge_graph: toolRegistry["knowledge_graph"],
+      };
     
     // Register our tools
     Object.values(simplifiedRegistry).forEach(tool => {
