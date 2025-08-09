@@ -22,10 +22,11 @@ Interactive conversation starters and analysis guides:
 ## 🔧 Tools
 Webset management and analysis functions:
 
-### Core Webset Operations
-• **websets_search** (query, limit) - Search the web and create new websets asynchronously
-• **websets_search_guide** () - Learn to use websets search effectively
-• **websets_manager** (action, params) - Advanced webset management operations
+  ### Core Webset Operations
+  • **websets_search** (query, limit) - Search the web and create new websets asynchronously
+  • **websets_search_guide** () - Learn to use websets search effectively
+  • **websets_manager** (action, params) - Advanced webset management operations
+  • **knowledge_graph** (operation, params) - Maintain connections between webset results
 
 ### Webset Management
 • **list_websets** () - List all your websets with status and metadata
