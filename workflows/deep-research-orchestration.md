@@ -195,11 +195,11 @@ Also list consolidated items:
 
 ---
 
-## Step 6 — Claim Evaluation (claims-evaluation.md)
+## Step 6 — Claim Evaluation (structured evaluations)
 
 Subagents independently evaluate claims within their assigned area to avoid overlap. For each claim:
 
-- Verdict: supported | refuted
+- Verdict: supported | refuted | uncertain
 - Confidence: 0.0–1.0 (calibrated)
 - Rationale: concise justification
 - Corrected claim: only if refuted (precise, minimally edited)
@@ -226,13 +226,13 @@ Rubric notes:
 - Penalize circular citations; check for data lineage.
 - For numbers, verify definitions and denominators.
 
-Write `./reports/<slug>/claims-evaluation.md` including per-claim blocks and a summary table.
+Write `./reports/<slug>/claims-evaluation.jsonl` containing one JSON object per line following the schema above. Do not produce markdown in this step.
 
 ---
 
 ## Step 7 — Synthesize Findings (.md)
 
-Produce a consolidated `claims-evaluation.md` with:
+From Step 6 outputs, materialize `./reports/<slug>/claims-evaluation.md` with:
 - Summary metrics: total claims, supported, refuted, uncertain
 - Heatmap by claim type and section
 - Detailed per-claim evaluations with citations as markdown links
