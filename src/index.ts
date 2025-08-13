@@ -469,7 +469,7 @@ export class ExaWebsetsServer {
     try {
       const transport = new StdioServerTransport();
       await this.server.connect(transport);
-      console.log(`${colors.bright}${colors.magenta}Exa Websets MCP Server${colors.reset} started in ${colors.bright}STDIO mode${colors.reset}`);
+      console.error(`${colors.bright}${colors.magenta}Exa Websets MCP Server${colors.reset} started in ${colors.bright}STDIO mode${colors.reset}`);
     } catch (error) {
       console.error(`${colors.bright}${colors.red}Failed to start STDIO server:${colors.reset}`, error);
       process.exit(1);
@@ -492,12 +492,12 @@ async function main(): Promise<void> {
       console.log(`${colors.bright}${colors.yellow}Starting in HTTP mode on port ${port}${colors.reset}`);
       await server.startHttpServer(port);
     } else if (mode === '--stdio') {
-      // STDIO mode when explicitly requested
-      console.log(`${colors.bright}${colors.yellow}Starting in STDIO mode${colors.reset}`);
+      // STDIO mode when explicitly requested - use stderr for logging
+      console.error(`${colors.bright}${colors.yellow}Starting in STDIO mode${colors.reset}`);
       await server.startStdioServer();
     } else {
-      // Default to STDIO mode (MCP standard)
-      console.log(`${colors.bright}${colors.yellow}Starting in STDIO mode (default)${colors.reset}`);
+      // Default to STDIO mode (MCP standard) - use stderr for logging
+      console.error(`${colors.bright}${colors.yellow}Starting in STDIO mode (default)${colors.reset}`);
       await server.startStdioServer();
     }
   } catch (error) {
