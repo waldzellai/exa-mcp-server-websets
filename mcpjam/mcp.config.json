@@ -1,0 +1,12 @@
+{
+  "server": {
+    "command": "node",
+    "args": ["build/index.js", "--stdio"],
+    "env": {
+      "EXA_API_KEY": "${EXA_API_KEY}",
+      "NODE_ENV": "production"
+    }
+  },
+  "timeoutMs": 60000,
+  "description": "Exa Websets MCP Server with Orchestration Workflows"
+}
