@@ -23,11 +23,14 @@ import { featureFlags } from "./config/features.js";
 
 // Import prompts
 import {
+  crmOrchestration,
   enrichmentWorkflow,
+  hiringOrchestration,
   horizontalProcess,
   integrationProcess,
   iterativeIntelligence,
   listMcpAssets,
+  marketingOrchestration,
   quickStart,
   websetAnalysisGuide,
   websetDiscovery,
@@ -291,6 +294,61 @@ export class ExaWebsetsServer {
               iterations ? parseInt(iterations) : undefined,
               registryPath
             )
+          }
+        }]
+      })
+    );
+    
+    // Orchestration Prompts - User-focused workflows for common use cases
+    
+    this.server.prompt("marketing_orchestration", "Competitor and brand monitoring orchestration",
+      {
+        companyName: z.string().describe("Your company name"),
+        targetAudience: z.string().optional().describe("Target audience for monitoring"),
+        timeframe: z.string().optional().describe("Time range for monitoring (e.g., '30d', '90d')")
+      },
+      async ({ companyName, targetAudience, timeframe }) => ({
+        messages: [{
+          role: "user",
+          content: {
+            type: "text",
+            text: await marketingOrchestration(companyName, targetAudience, timeframe)
+          }
+        }]
+      })
+    );
+    
+    this.server.prompt("crm_orchestration", "Lead discovery and account-based marketing orchestration",
+      {
+        idealCustomerProfile: z.string().describe("Description of your ideal customer profile (ICP)"),
+        region: z.string().optional().describe("Geographic region for lead search"),
+        intentSignals: z.string().optional().describe("Intent signals to search for (e.g., hiring, funding, product launches)")
+      },
+      async ({ idealCustomerProfile, region, intentSignals }) => ({
+        messages: [{
+          role: "user",
+          content: {
+            type: "text",
+            text: await crmOrchestration(idealCustomerProfile, region, intentSignals)
+          }
+        }]
+      })
+    );
+    
+    this.server.prompt("hiring_orchestration", "Recruiter and job seeker hiring orchestration",
+      {
+        mode: z.enum(["recruiter", "job_seeker"]).describe("Mode: 'recruiter' for candidate sourcing or 'job_seeker' for target company tracking"),
+        role: z.string().describe("Job title or role to search for"),
+        location: z.string().optional().describe("Location preference (e.g., 'Bay Area', 'Remote', 'NYC')"),
+        seniority: z.string().optional().describe("Seniority level (e.g., 'junior', 'mid-level', 'senior', 'staff')"),
+        keywords: z.string().optional().describe("Key skills or interests (comma-separated)")
+      },
+      async ({ mode, role, location, seniority, keywords }) => ({
+        messages: [{
+          role: "user",
+          content: {
+            type: "text",
+            text: await hiringOrchestration(mode, role, location, seniority, keywords)
           }
         }]
       })

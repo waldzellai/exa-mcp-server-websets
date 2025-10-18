@@ -1,0 +1,19 @@
+{
+  "servers": {
+    "websets": {
+      "command": "node",
+      "args": [
+        "/Users/b.c.nims/projects/exa-mcp-server-websets/build/index.js"
+    ],
+      "env": {
+        "EXA_API_KEY": "04d84ad6-726b-450d-9274-4050b08ab052"
+    },
+    "sequential-thinking": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"],
+      "env": {
+        "ENV_1": "<ENV_1>"
+      }
+    }
+  }
+}
