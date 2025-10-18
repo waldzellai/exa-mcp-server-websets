@@ -23,11 +23,14 @@ import { featureFlags } from "./config/features.js";
 
 // Import prompts
 import {
+  crmOrchestration,
   enrichmentWorkflow,
+  hiringOrchestration,
   horizontalProcess,
   integrationProcess,
   iterativeIntelligence,
   listMcpAssets,
+  marketingOrchestration,
   quickStart,
   websetAnalysisGuide,
   websetDiscovery,
@@ -35,6 +38,12 @@ import {
   websetStatusCheck,
   webhookSetupGuide
 } from "./prompts/index.js";
+
+// Import resources
+import {
+  resolveOrchestrationResource,
+  listOrchestrationResources
+} from "./resources/index.js";
 
 // Load environment variables
 config();
@@ -105,6 +114,7 @@ export class ExaWebsetsServer {
     // Setup server components
     this.registerTools();
     this.registerPrompts();
+    this.registerResources();
     this.registerProtocolHandlers();
   }
 
@@ -295,6 +305,85 @@ export class ExaWebsetsServer {
         }]
       })
     );
+    
+    // Orchestration Prompts - User-focused workflows for common use cases
+    
+    this.server.prompt("marketing_orchestration", "Competitor and brand monitoring orchestration",
+      {
+        companyName: z.string().describe("Your company name"),
+        targetAudience: z.string().optional().describe("Target audience for monitoring"),
+        timeframe: z.string().optional().describe("Time range for monitoring (e.g., '30d', '90d')")
+      },
+      async ({ companyName, targetAudience, timeframe }) => ({
+        messages: [{
+          role: "user",
+          content: {
+            type: "text",
+            text: await marketingOrchestration(companyName, targetAudience, timeframe)
+          }
+        }]
+      })
+    );
+    
+    this.server.prompt("crm_orchestration", "Lead discovery and account-based marketing orchestration",
+      {
+        idealCustomerProfile: z.string().describe("Description of your ideal customer profile (ICP)"),
+        region: z.string().optional().describe("Geographic region for lead search"),
+        intentSignals: z.string().optional().describe("Intent signals to search for (e.g., hiring, funding, product launches)")
+      },
+      async ({ idealCustomerProfile, region, intentSignals }) => ({
+        messages: [{
+          role: "user",
+          content: {
+            type: "text",
+            text: await crmOrchestration(idealCustomerProfile, region, intentSignals)
+          }
+        }]
+      })
+    );
+    
+    this.server.prompt("hiring_orchestration", "Recruiter and job seeker hiring orchestration",
+      {
+        mode: z.enum(["recruiter", "job_seeker"]).describe("Mode: 'recruiter' for candidate sourcing or 'job_seeker' for target company tracking"),
+        role: z.string().describe("Job title or role to search for"),
+        location: z.string().optional().describe("Location preference (e.g., 'Bay Area', 'Remote', 'NYC')"),
+        seniority: z.string().optional().describe("Seniority level (e.g., 'junior', 'mid-level', 'senior', 'staff')"),
+        keywords: z.string().optional().describe("Key skills or interests (comma-separated)")
+      },
+      async ({ mode, role, location, seniority, keywords }) => ({
+        messages: [{
+          role: "user",
+          content: {
+            type: "text",
+            text: await hiringOrchestration(mode, role, location, seniority, keywords)
+          }
+        }]
+      })
+    );
+  }
+
+  /**
+   * Register resources for orchestrations
+   */
+  private registerResources(): void {
+    // Register a catch-all resource handler for websets:// URIs
+    this.server.resource(
+      "websets://orchestrations/*",
+      "Orchestration resources (marketing, CRM, hiring)",
+      async (uri: URL) => {
+        const resource = await resolveOrchestrationResource(uri.toString());
+        if (!resource) {
+          throw new Error(`Failed to resolve resource: ${uri}`);
+        }
+        return {
+          contents: [{
+            uri: resource.uri,
+            mimeType: resource.mimeType,
+            text: resource.text
+          }]
+        };
+      }
+    );
   }
 
   /**
@@ -469,7 +558,7 @@ export class ExaWebsetsServer {
     try {
       const transport = new StdioServerTransport();
       await this.server.connect(transport);
-      console.log(`${colors.bright}${colors.magenta}Exa Websets MCP Server${colors.reset} started in ${colors.bright}STDIO mode${colors.reset}`);
+      console.error(`${colors.bright}${colors.magenta}Exa Websets MCP Server${colors.reset} started in ${colors.bright}STDIO mode${colors.reset}`);
     } catch (error) {
       console.error(`${colors.bright}${colors.red}Failed to start STDIO server:${colors.reset}`, error);
       process.exit(1);
@@ -492,12 +581,12 @@ async function main(): Promise<void> {
       console.log(`${colors.bright}${colors.yellow}Starting in HTTP mode on port ${port}${colors.reset}`);
       await server.startHttpServer(port);
     } else if (mode === '--stdio') {
-      // STDIO mode when explicitly requested
-      console.log(`${colors.bright}${colors.yellow}Starting in STDIO mode${colors.reset}`);
+      // STDIO mode when explicitly requested - use stderr for logging
+      console.error(`${colors.bright}${colors.yellow}Starting in STDIO mode${colors.reset}`);
       await server.startStdioServer();
     } else {
-      // Default to STDIO mode (MCP standard)
-      console.log(`${colors.bright}${colors.yellow}Starting in STDIO mode (default)${colors.reset}`);
+      // Default to STDIO mode (MCP standard) - use stderr for logging
+      console.error(`${colors.bright}${colors.yellow}Starting in STDIO mode (default)${colors.reset}`);
       await server.startStdioServer();
     }
   } catch (error) {
