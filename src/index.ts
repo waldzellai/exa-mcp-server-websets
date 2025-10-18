@@ -366,46 +366,10 @@ export class ExaWebsetsServer {
    * Register resources for orchestrations
    */
   private registerResources(): void {
-    // Register resource list provider
+    // Register a catch-all resource handler for websets:// URIs
     this.server.resource(
-      "orchestrations/marketing",
-      "Competitor and brand monitoring orchestration resource",
-      async (uri: URL) => {
-        const resource = await resolveOrchestrationResource(uri.toString());
-        if (!resource) {
-          throw new Error(`Failed to resolve resource: ${uri}`);
-        }
-        return {
-          contents: [{
-            uri: resource.uri,
-            mimeType: resource.mimeType,
-            text: resource.text
-          }]
-        };
-      }
-    );
-
-    this.server.resource(
-      "orchestrations/crm",
-      "Lead discovery and account-based marketing resource",
-      async (uri: URL) => {
-        const resource = await resolveOrchestrationResource(uri.toString());
-        if (!resource) {
-          throw new Error(`Failed to resolve resource: ${uri}`);
-        }
-        return {
-          contents: [{
-            uri: resource.uri,
-            mimeType: resource.mimeType,
-            text: resource.text
-          }]
-        };
-      }
-    );
-
-    this.server.resource(
-      "orchestrations/hiring",
-      "Recruiter and job seeker hiring resource",
+      "websets://orchestrations/*",
+      "Orchestration resources (marketing, CRM, hiring)",
       async (uri: URL) => {
         const resource = await resolveOrchestrationResource(uri.toString());
         if (!resource) {
