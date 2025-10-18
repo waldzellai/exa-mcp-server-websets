@@ -173,7 +173,12 @@ Array of 150 candidate items with \`url\`, \`title\`, \`text\`, \`source\` (GitH
 
 **Expected Output**:
 Each candidate enriched with:
-- \`entities.person\`: ["John Smith", ...]\n- \`entities.skills\`: ["Python", "Kubernetes", "System Design", ...]\n- \`entities.company\`: ["Google", "Meta", ...]\n- \`entities.projects\`: ["Open-source ML library", ...]\n- \`experience_level\`: "junior" | "mid" | "senior" | "staff"\n- \`summary\`: Career highlight and current focus
+- \`entities.person\`: ["John Smith", ...]
+- \`entities.skills\`: ["Python", "Kubernetes", "System Design", ...]
+- \`entities.company\`: ["Google", "Meta", ...]
+- \`entities.projects\`: ["Open-source ML library", ...]
+- \`experience_level\`: "junior" | "mid" | "senior" | "staff"
+- \`summary\`: Career highlight and current focus
 
 ---
 
@@ -192,14 +197,17 @@ Use knowledge_graph to score candidates and prepare outreach messaging.
       "name": "John Smith",
       "entityType": "person",
       "observations": [
-        "Experience Level: Senior\",
-        "Top Skills: Go, Distributed Systems, Kubernetes\",
-        "Current/Recent Company: Google\",
-        "GitHub Activity: High (50+ contributions last 3 months)\",
-        "Recent Blog Posts: 'Scaling to 1M QPS', 'Kubernetes Best Practices'\",
-        "Contact: john.smith@email.com, github.com/johnsmith\",
-        "Fit Score: 9/10 (expertise matches 90% of JD)\",
-        \"Outreach Angle: Mention leadership opportunity in your recent blog post on distributed systems\"\n      ]\n    }\n  ]\n}
+        "Experience Level: Senior",
+        "Top Skills: Go, Distributed Systems, Kubernetes",
+        "Current/Recent Company: Google",
+        "GitHub Activity: High (50+ contributions last 3 months)",
+        "Recent Blog Posts: 'Scaling to 1M QPS', 'Kubernetes Best Practices'",
+        "Contact: john.smith@email.com, github.com/johnsmith",
+        "Fit Score: 9/10 (expertise matches 90% of JD)",
+        "Outreach Angle: Mention leadership opportunity in your recent blog post on distributed systems"
+      ]
+    }
+  ]
 \`\`\`
 
 ---
@@ -397,9 +405,6 @@ A: Search for company mentions: \`site:linkedin.com "former Google engineer" OR 
 6. Build outreach sequences with personalized messages
 
 Ready to discover your next hire?`;
-  }
-
-  return jobSeekerWorkflow(role, location, seniority, keywords);
 }
 
 function jobSeekerWorkflow(role: string, location: string, seniority: string, keywords: string): string {
@@ -554,7 +559,14 @@ Array of 200 job postings and company mentions with \`url\`, \`title\`, \`text\`
 
 **Expected Output**:
 Each job posting enriched with:
-- \`entities.company\`: ["Acme Corp", ...]\n- \`entities.role\`: ["Senior Engineer", ...]\n- \`entities.skills\`: ["Python", "React", "AWS", ...]\n- \`entities.recruiter\`: ["Jane Doe (Recruiter)", ...]\n- \`job_requirements\`: ["5+ years experience", "Kubernetes knowledge", ...]\n- \`company_stage\`: "startup" | "scale-up" | "enterprise"\n- \`growth_signals\`: "high" | "medium" | "low"\n- \`summary\`: 1-2 sentence job description
+- \`entities.company\`: ["Acme Corp", ...]
+- \`entities.role\`: ["Senior Engineer", ...]
+- \`entities.skills\`: ["Python", "React", "AWS", ...]
+- \`entities.recruiter\`: ["Jane Doe (Recruiter)", ...]
+- \`job_requirements\`: ["5+ years experience", "Kubernetes knowledge", ...]
+- \`company_stage\`: "startup" | "scale-up" | "enterprise"
+- \`growth_signals\`: "high" | "medium" | "low"
+- \`summary\`: 1-2 sentence job description
 
 ---
 
@@ -573,11 +585,18 @@ Extract recruiter contacts and hiring manager information for relationship-build
       "name": "Acme Corp",
       "entityType": "company",
       "observations": [
-        \"Company Stage: Scale-up (Series B, 100-250 employees)\",
-        \"Growth Signals: 5 new job postings this month (expansion)\",
-        \"Hiring for: Senior Engineer, Product Manager, Data Engineer\",
-        \"Hiring Manager: Sarah Chen (VP Engineering, sarah@acme.com)\",
-        \"Recruiter: Mike Johnson (Technical Recruiter, mike@acme.com)\",\n        \"Website: acme.com | LinkedIn: /company/acme-corp\",\n        \"Mission Fit: High (AI/ML company, matches your interests)\",\n        \"Outreach Strategy: Connect with Sarah on LinkedIn about their ML infrastructure\"\n      ]\n    }\n  ]\n}
+        "Company Stage: Scale-up (Series B, 100-250 employees)",
+        "Growth Signals: 5 new job postings this month (expansion)",
+        "Hiring for: Senior Engineer, Product Manager, Data Engineer",
+        "Hiring Manager: Sarah Chen (VP Engineering, sarah@acme.com)",
+        "Recruiter: Mike Johnson (Technical Recruiter, mike@acme.com)",
+        "Website: acme.com | LinkedIn: /company/acme-corp",
+        "Mission Fit: High (AI/ML company, matches your interests)",
+        "Outreach Strategy: Connect with Sarah on LinkedIn about their ML infrastructure"
+      ]
+    }
+  ]
+}
 \`\`\`
 
 ---
@@ -593,7 +612,20 @@ Prioritize companies and roles by fit, and plan authentic outreach.
 {
   "operation": "add_observations",
   "entityName": "Acme Corp",
-  "contents": [\n    \"Overall Fit Score: 8.5/10\",\n    \"Company Culture Score: 8/10 (based on website, reviews)\",\n    \"Role Match Score: 9/10 (skills: 95% overlap)\",\n    \"Stage Match: Perfect (you're seeking scale-up growth opportunity)\",\n    \"Location: Remote OK, HQ in San Francisco\",\n    \"Next Steps: \",\n    \"1. Follow Sarah Chen on LinkedIn\",\n    \"2. Engage thoughtfully on 2-3 of her posts\",\n    \"3. Send personalized DM referencing her recent tech post\",\n    \"4. If connection accepted, ask for 15-min call about ML infrastructure\",\n    \"5. After 1-2 weeks, mention you saw the open Senior Engineer role\"\n  ]\n}
+  "contents": [
+    "Overall Fit Score: 8.5/10",
+    "Company Culture Score: 8/10 (based on website, reviews)",
+    "Role Match Score: 9/10 (skills: 95% overlap)",
+    "Stage Match: Perfect (you're seeking scale-up growth opportunity)",
+    "Location: Remote OK, HQ in San Francisco",
+    "Next Steps: ",
+    "1. Follow Sarah Chen on LinkedIn",
+    "2. Engage thoughtfully on 2-3 of her posts",
+    "3. Send personalized DM referencing her recent tech post",
+    "4. If connection accepted, ask for 15-min call about ML infrastructure",
+    "5. After 1-2 weeks, mention you saw the open Senior Engineer role"
+  ]
+}
 \`\`\`
 
 ---
@@ -794,3 +826,4 @@ A: Yes! Search for \`founder OR "co-founder" (technical OR engineering)\` in you
 
 Ready to land your dream role?`;
 }
+
