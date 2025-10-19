@@ -28,11 +28,6 @@ export interface FeatureFlags {
    * Enable advanced logging capabilities
    */
   logging: boolean;
-  
-  /**
-   * Enable sampling/completion features
-   */
-  sampling: boolean;
 }
 
 /**
@@ -42,8 +37,7 @@ const DEFAULT_FLAGS: FeatureFlags = {
   resources: false,
   enhancedErrors: false,
   progressNotifications: false,
-  logging: false,
-  sampling: false
+  logging: false
 };
 
 /**
@@ -54,8 +48,7 @@ function loadFeatureFlags(): FeatureFlags {
     resources: process.env.MCP_FEATURE_RESOURCES === 'true',
     enhancedErrors: process.env.MCP_FEATURE_ENHANCED_ERRORS === 'true',
     progressNotifications: process.env.MCP_FEATURE_PROGRESS_NOTIFICATIONS === 'true',
-    logging: process.env.MCP_FEATURE_LOGGING === 'true',
-    sampling: process.env.MCP_FEATURE_SAMPLING === 'true'
+    logging: process.env.MCP_FEATURE_LOGGING === 'true'
   };
 }
 

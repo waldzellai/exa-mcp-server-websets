@@ -8,10 +8,12 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
+import rateLimit from "express-rate-limit";
 
 // Import only the tools we need
 import websetsGuideTool from "./tools/websetsGuide.js";
 import { toolRegistry } from "./tools/config.js";
+import { webhookEventsTool } from "./tools/webhookEvents.js";
 
 // Import tools to register them
 import "./tools/webSearch.js";
@@ -20,6 +22,11 @@ import "./tools/knowledgeGraph.js";
 
 // Import feature flags
 import { featureFlags } from "./config/features.js";
+
+// Import webhook receiver utilities
+import { getWebhookEventStore } from "./state/WebhookEventStore.js";
+import { verifyExaSignature } from "./utils/security.js";
+import { createWebsetsConfig } from "./config/websets.js";
 
 // Import prompts
 import {
@@ -95,10 +102,6 @@ export class ExaWebsetsServer {
       capabilities.logging = {};
     }
     
-    if (featureFlags.isEnabled('sampling')) {
-      capabilities.sampling = {};
-    }
-    
     // Initialize MCP server with capabilities
     this.server = new McpServer({
       name: "exa-websets-server",
@@ -122,13 +125,14 @@ export class ExaWebsetsServer {
    * Register all tools with the MCP server
    */
   private registerTools(): void {
-    // Create our simplified tool registry with three tools
-      const simplifiedRegistry = {
-        web_search_exa: toolRegistry["web_search_exa"],
-        websets_manager: toolRegistry["websets_manager"],
-        websets_guide: websetsGuideTool,
-        knowledge_graph: toolRegistry["knowledge_graph"],
-      };
+    // Create tool registry with webhook events tool
+    const simplifiedRegistry = {
+      web_search_exa: toolRegistry["web_search_exa"],
+      websets_manager: toolRegistry["websets_manager"],
+      websets_guide: websetsGuideTool,
+      knowledge_graph: toolRegistry["knowledge_graph"],
+      get_webhook_events: webhookEventsTool,
+    };
     
     // Register our tools
     Object.values(simplifiedRegistry).forEach(tool => {
@@ -422,22 +426,6 @@ export class ExaWebsetsServer {
       );
     }
     
-    // Register sampling handler only if feature is enabled
-    if (featureFlags.isEnabled('sampling')) {
-      protocol.setRequestHandler(
-        z.object({
-          method: z.literal('sampling/createMessage'),
-          params: z.any().optional()
-        }),
-        async (request) => {
-          // TODO: Implement sampling
-          return {
-            success: true,
-            message: "Sampling acknowledged (not yet implemented)"
-          };
-        }
-      );
-    }
   }
 
   /**
@@ -448,10 +436,118 @@ export class ExaWebsetsServer {
   }
 
   /**
+   * Setup webhook receiver endpoint
+   */
+  private setupWebhookReceiver(config: ReturnType<typeof createWebsetsConfig>): void {
+    const receiverConfig = config.webhookReceiver!;
+    const webhookStore = getWebhookEventStore(receiverConfig.eventTtlMs);
+
+    // Create rate limiter
+    const limiter = rateLimit({
+      windowMs: 60_000, // 1 minute
+      max: receiverConfig.rateLimitRpm,
+      standardHeaders: true,
+      legacyHeaders: false,
+      handler: (req, res) => {
+        res.status(429).json({ ok: false, error: 'rate_limit_exceeded' });
+      },
+    });
+
+    // Webhook receiver route
+    this.app.post(
+      receiverConfig.path,
+      express.raw({ type: 'application/json', limit: '1mb' }),
+      limiter,
+      async (req, res) => {
+        try {
+          const sigHeader = req.header('Exa-Signature') || '';
+          const secrets = receiverConfig.secrets;
+          const raw = req.body as Buffer;
+
+          // Verify signature with at least one secret
+          if (secrets.length === 0) {
+            console.error('[Webhook] No secrets configured. Add WEBHOOK_SECRETS to env.');
+            res.status(500).json({ ok: false, error: 'configuration_error' });
+            return;
+          }
+
+          let verified = false;
+          for (const secret of secrets) {
+            const result = verifyExaSignature({
+              header: sigHeader,
+              secret,
+              rawBody: raw,
+              maxSkewSec: receiverConfig.maxSkewSec,
+            });
+            if (result.ok) {
+              verified = true;
+              break;
+            }
+          }
+
+          if (!verified) {
+            console.error('[Webhook] Signature verification failed');
+            res.status(401).json({ ok: false, error: 'invalid_signature' });
+            return;
+          }
+
+          // Parse JSON after signature validation
+          const evt = JSON.parse(raw.toString('utf8'));
+
+          // Basic shape checks
+          if (!evt?.id || !evt?.type || !evt?.createdAt) {
+            res.status(400).json({ ok: false, error: 'invalid_event_shape' });
+            return;
+          }
+
+          // Discard very old events (defense-in-depth)
+          const createdAtMs = Date.parse(evt.createdAt);
+          if (isNaN(createdAtMs) || (Date.now() - createdAtMs) > receiverConfig.eventTtlMs) {
+            res.status(202).json({ ok: true, ignored: 'expired' });
+            return;
+          }
+
+          // Dedup + store
+          const accepted = webhookStore.add(evt);
+          
+          if (accepted) {
+            console.log(`[Webhook] Event received: ${evt.type} (${evt.id})`);
+          } else {
+            console.log(`[Webhook] Event duplicate/expired: ${evt.type} (${evt.id})`);
+          }
+
+          // Acknowledge immediately
+          res.status(200).json({ ok: true });
+        } catch (err) {
+          console.error('[Webhook] Processing error:', err);
+          // Never leak details; Exa will retry on 5xx
+          res.status(500).json({ ok: false });
+        }
+      }
+    );
+
+    console.log(`${colors.bright}${colors.cyan}Webhook receiver${colors.reset} enabled at ${colors.green}${receiverConfig.path}${colors.reset}`);
+    if (receiverConfig.publicBaseUrl) {
+      console.log(`${colors.bright}${colors.blue}Public callback URL:${colors.reset} ${receiverConfig.publicBaseUrl}${receiverConfig.path}`);
+    } else {
+      console.log(`${colors.yellow}⚠️  PUBLIC_BASE_URL not set. Webhooks will not work until configured.${colors.reset}`);
+    }
+  }
+
+  /**
    * Start the server with HTTP transport
    */
   public async startHttpServer(port: number = 3000): Promise<void> {
     try {
+      // Trust proxy for ngrok/cloudflared
+      this.app.set('trust proxy', 1);
+
+      // Initialize webhook receiver if enabled
+      const websetsConfig = createWebsetsConfig();
+      if (websetsConfig.webhookReceiver?.enabled) {
+        this.setupWebhookReceiver(websetsConfig);
+      }
+
       // Handle POST requests for client-to-server communication
       this.app.post('/mcp', async (req, res) => {
         const sessionId = req.headers['mcp-session-id'] as string | undefined;

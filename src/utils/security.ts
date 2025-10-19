@@ -120,3 +120,141 @@ export function maskSensitiveData(data: unknown): unknown {
   
   return data;
 }
+
+/**
+ * Exa Webhook Signature Verification
+ * Format: Exa-Signature: t=TIMESTAMP,v1=SIG1,v1=SIG2,...
+ */
+
+/**
+ * Parsed Exa webhook signature header
+ */
+export interface ParsedExaSignature {
+  /** Unix timestamp in seconds */
+  t: number;
+  /** Array of signature strings */
+  sigs: string[];
+}
+
+/**
+ * Signature verification result
+ */
+export type ExaVerificationResult = 
+  | { ok: true; timestamp: number }
+  | { ok: false; error: string };
+
+/**
+ * Parse Exa-Signature header
+ * Format: t=TIMESTAMP,v1=SIG1,v1=SIG2,...
+ */
+export function parseExaSignature(header: string): ParsedExaSignature | null {
+  if (!header) {
+    return null;
+  }
+
+  const parts = header.split(',');
+  let timestamp: number | null = null;
+  const signatures: string[] = [];
+
+  for (const part of parts) {
+    const [key, value] = part.split('=', 2);
+    if (!key || !value) continue;
+
+    if (key === 't') {
+      const parsed = parseInt(value, 10);
+      if (!isNaN(parsed)) {
+        timestamp = parsed;
+      }
+    } else if (key === 'v1') {
+      signatures.push(value);
+    }
+  }
+
+  if (timestamp === null || signatures.length === 0) {
+    return null;
+  }
+
+  return { t: timestamp, sigs: signatures };
+}
+
+/**
+ * Compute HMAC-SHA256 signature for Exa webhook
+ * Payload format: "${timestamp}.${rawBody}"
+ */
+export function computeExaSignature(secret: string, timestamp: number, rawBody: Buffer | string): string {
+  const payload = `${timestamp}.${rawBody.toString('utf8')}`;
+  return crypto.createHmac('sha256', secret)
+    .update(payload)
+    .digest('hex');
+}
+
+/**
+ * Timing-safe string comparison for hex strings
+ */
+export function timingSafeEqualHex(a: string, b: string): boolean {
+  // Ensure both strings are converted to buffers of equal length
+  const bufA = Buffer.from(a, 'hex');
+  const bufB = Buffer.from(b, 'hex');
+
+  // If lengths differ, comparison fails (but still use timing-safe)
+  if (bufA.length !== bufB.length) {
+    // Create dummy buffers of same length to maintain constant time
+    const maxLen = Math.max(bufA.length, bufB.length);
+    const dummyA = Buffer.alloc(maxLen);
+    const dummyB = Buffer.alloc(maxLen);
+    bufA.copy(dummyA);
+    bufB.copy(dummyB);
+    try {
+      crypto.timingSafeEqual(dummyA, dummyB);
+    } catch {
+      // Expected to throw, but maintains timing
+    }
+    return false;
+  }
+
+  try {
+    return crypto.timingSafeEqual(bufA, bufB);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Verify Exa webhook signature
+ * 
+ * @param params Verification parameters
+ * @returns Verification result with timestamp or error
+ */
+export function verifyExaSignature(params: {
+  header: string;
+  secret: string;
+  rawBody: Buffer;
+  maxSkewSec: number;
+}): ExaVerificationResult {
+  const { header, secret, rawBody, maxSkewSec } = params;
+
+  // Parse signature header
+  const parsed = parseExaSignature(header);
+  if (!parsed) {
+    return { ok: false, error: 'invalid_signature_format' };
+  }
+
+  // Check timestamp skew
+  const now = Math.floor(Date.now() / 1000);
+  const skew = Math.abs(now - parsed.t);
+  if (skew > maxSkewSec) {
+    return { ok: false, error: `timestamp_skew_${skew}s` };
+  }
+
+  // Compute expected signature
+  const expected = computeExaSignature(secret, parsed.t, rawBody);
+
+  // Check if any provided signature matches (timing-safe)
+  for (const sig of parsed.sigs) {
+    if (timingSafeEqualHex(expected, sig)) {
+      return { ok: true, timestamp: parsed.t };
+    }
+  }
+
+  return { ok: false, error: 'signature_mismatch' };
+}

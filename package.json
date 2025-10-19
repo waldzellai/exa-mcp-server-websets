@@ -40,15 +40,17 @@
     "watch": "tsc --watch",
     "dev": "npx @smithery/cli dev",
     "prepublishOnly": "npm run build",
-    "test": "echo 'Tests temporarily disabled'",
+    "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage"
   },
   "dependencies": {
+    "@kevinwatt/mcp-webhook": "^0.2.2",
     "@modelcontextprotocol/sdk": "^1.13.0",
     "axios": "^1.7.8",
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
+    "express-rate-limit": "^8.1.0",
     "mem0ai": "^2.1.36",
     "zod": "^3.22.4"
   },

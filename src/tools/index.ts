@@ -10,3 +10,4 @@ import "./knowledgeGraph.js";
 
 // When adding a new tool, import it here
 // import "./newTool.js";
+import "./subscribeToEvents.js";

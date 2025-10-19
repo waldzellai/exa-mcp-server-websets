@@ -28,6 +28,8 @@ export interface WebsetsConfig {
   events?: EventSystemConfig;
   /** Webhook system configuration */
   webhooks?: WebhookSystemConfig;
+  /** Webhook receiver configuration */
+  webhookReceiver?: WebhookReceiverConfig;
 }
 
 /**
@@ -74,6 +76,28 @@ export interface WebhookSystemConfig {
   secret?: string;
 }
 
+/**
+ * Webhook receiver configuration
+ */
+export interface WebhookReceiverConfig {
+  /** Enable webhook receiver endpoint */
+  enabled: boolean;
+  /** Webhook receiver path (e.g., /webhooks/exa) */
+  path: string;
+  /** Public base URL for webhook callbacks */
+  publicBaseUrl?: string;
+  /** Event retention TTL in milliseconds */
+  eventTtlMs: number;
+  /** Maximum timestamp skew for replay protection in seconds */
+  maxSkewSec: number;
+  /** Rate limit requests per minute */
+  rateLimitRpm: number;
+  /** Rate limit burst allowance */
+  rateLimitBurst: number;
+  /** Comma-separated webhook secrets for signature verification */
+  secrets: string[];
+}
+
 export interface ApiClientConfig {
   /** User agent string for requests */
   userAgent: string;
@@ -115,6 +139,15 @@ const DEFAULT_CONFIG: Omit<WebsetsConfig, 'apiKey'> = {
     retryDelay: 1000, // 1 second
     maxRetryDelay: 10000, // 10 seconds
     validateSignatures: true,
+  },
+  webhookReceiver: {
+    enabled: true, // Enabled by default
+    path: '/webhooks/exa',
+    eventTtlMs: 3600000, // 1 hour
+    maxSkewSec: 300, // 5 minutes
+    rateLimitRpm: 600, // 10 req/sec sustained
+    rateLimitBurst: 150, // 2.5x burst
+    secrets: [],
   },
 };
 
@@ -166,6 +199,16 @@ export function createWebsetsConfig(): WebsetsConfig {
       maxRetryDelay: parseInt(process.env.WEBSETS_WEBHOOKS_MAX_RETRY_DELAY || String(DEFAULT_CONFIG.webhooks!.maxRetryDelay), 10),
       validateSignatures: process.env.WEBSETS_WEBHOOKS_VALIDATE_SIGNATURES !== 'false' && DEFAULT_CONFIG.webhooks!.validateSignatures,
       secret: process.env.WEBSETS_WEBHOOKS_SECRET,
+    },
+    webhookReceiver: {
+      enabled: process.env.WEBHOOKS_ENABLE !== 'false' && DEFAULT_CONFIG.webhookReceiver!.enabled,
+      path: process.env.WEBHOOK_PATH || DEFAULT_CONFIG.webhookReceiver!.path,
+      publicBaseUrl: process.env.PUBLIC_BASE_URL,
+      eventTtlMs: parseInt(process.env.WEBHOOK_EVENT_TTL_MS || String(DEFAULT_CONFIG.webhookReceiver!.eventTtlMs), 10),
+      maxSkewSec: parseInt(process.env.WEBHOOK_MAX_SKEW_SEC || String(DEFAULT_CONFIG.webhookReceiver!.maxSkewSec), 10),
+      rateLimitRpm: parseInt(process.env.WEBHOOKS_RATE_LIMIT_RPM || String(DEFAULT_CONFIG.webhookReceiver!.rateLimitRpm), 10),
+      rateLimitBurst: parseInt(process.env.WEBHOOKS_RATE_LIMIT_BURST || String(DEFAULT_CONFIG.webhookReceiver!.rateLimitBurst), 10),
+      secrets: process.env.WEBHOOK_SECRETS ? process.env.WEBHOOK_SECRETS.split(',').map(s => s.trim()).filter(Boolean) : DEFAULT_CONFIG.webhookReceiver!.secrets,
     },
   };
 }

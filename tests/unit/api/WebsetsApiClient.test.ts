@@ -11,6 +11,7 @@ import { WebsetsApiClient } from '../../../src/api/WebsetsApiClient.js';
 import { ApiErrorHandler } from '../../../src/api/ErrorHandler.js';
 import { RateLimiter, CircuitBreaker } from '../../../src/api/RateLimiter.js';
 import { WebsetsConfig, ApiClientConfig } from '../../../src/config/websets.js';
+import { TokenProvider } from '../../../src/utils/security.js';
 import {
   mockWebset,
   mockSuccessResponse,
@@ -36,6 +37,7 @@ describe('WebsetsApiClient', () => {
   let mockCircuitBreaker: jest.Mocked<CircuitBreaker>;
   let websetsConfig: WebsetsConfig;
   let clientConfig: ApiClientConfig;
+  let mockTokenProvider: TokenProvider;
 
   beforeEach(() => {
     // Reset mocks
@@ -101,8 +103,14 @@ describe('WebsetsApiClient', () => {
       enableMetrics: false
     };
 
+    // Create mock token provider
+    mockTokenProvider = {
+      getToken: () => 'test-api-key',
+      validateToken: () => true
+    };
+
     // Create API client instance
-    apiClient = new WebsetsApiClient(websetsConfig, clientConfig);
+    apiClient = new WebsetsApiClient(websetsConfig, clientConfig, mockTokenProvider);
   });
 
   afterEach(() => {
