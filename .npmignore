@@ -49,3 +49,5 @@ tests
 CONNECTION_ISSUES_ANALYSIS.md
 SMITHERY_LOGS.md
 debug-wrapper.js
+
+cc_mcp_config.json

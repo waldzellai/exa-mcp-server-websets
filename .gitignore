@@ -4,6 +4,7 @@ build/
 .env*
 .smithery/
 claude_code_mcp_config.json
+cc_mcp_config.json
 .claude/
 # Test coverage
 coverage/
